@@ -72,7 +72,7 @@ function repair() {
         exit 1
     fi
 
-    printf "%-32s " "REpairing rc.local ..."
+    printf "%-32s " "Repairing rc.local ..."
     if cp "${USYSTEM_DIR}/etc.defaults/rc.local" /etc; then
         printf '[OK]\n'
     else
