@@ -1,0 +1,30 @@
+#!/bin/sh
+
+if test -z "${USYSTEM_DIR}"; then
+    USYSTEM_DIR=/volume1/@usystem/usystem
+fi
+
+case "$1" in
+    start)
+        echo "Starting usystem"
+        if test -n "${USYSTEM_DIR}"; then
+            if grep ' /usys ' /proc/mounts > /dev/null 2>&1; then
+                mkdir -p /usys
+                mount -o bind "${USYSTEM_DIR}" /usys
+            fi
+        fi
+    ;;
+    reconfig)
+        true
+    ;;
+    stop)
+        echo "Shutting down usystem"
+        true
+    ;;
+    *)
+        echo "usage: $0 {start|stop|reconfig}"
+        exit 1
+    ;;
+esac
+
+exit 0

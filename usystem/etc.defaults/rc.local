@@ -1,0 +1,5 @@
+#!/bin/sh
+
+[ -x /etc/rc.usystem ] && /etc/rc.usystem start
+
+exit 0
