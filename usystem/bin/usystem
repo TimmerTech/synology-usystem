@@ -33,7 +33,6 @@ function import() {
 
 import echo
 import printf
-import perl
 
 ################################################################################
 # global variable
