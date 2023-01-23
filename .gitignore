@@ -6,3 +6,5 @@ usystem/etc/certs/*
 usystem/sbin/*
 !usystem/sbin/.keep
 usystem/tmp/
+usystem.tar.gz
+usystem.bak.*.tar.gz
