@@ -42,6 +42,26 @@ function repair_help() {
     exit 0
 }
 
+function repair_permissions() {
+    if ! chmod -R 755 "${USYSTEM_WORK_DIR}/bin/*"; then
+        return 1
+    fi
+    if ! chmod -R 755 "${USYSTEM_WORK_DIR}/etc/profile*"; then
+        return 1
+    fi
+    if ! chmod -R 755 "${USYSTEM_WORK_DIR}/etc/rc.*"; then
+        return 1
+    fi
+    if ! chmod -R 700 "${USYSTEM_WORK_DIR}/sbin/*"; then
+        return 1
+    fi
+    if ! chmod 755 "${USYSTEM_WORK_DIR}/log"; then
+        return 1
+    fi
+
+    return 0
+}
+
 function repair() {
     while [ ${#} -gt 0 ]; do
         case $1 in
@@ -61,6 +81,14 @@ function repair() {
 
     printf "%-32s " "Repairing rc.local ..."
     if cp "${USYSTEM_WORK_DIR}/etc/rc.local" /etc; then
+        printf '[OK]\n'
+    else
+        printf '[FAILED]\n'
+        exit 1
+    fi
+
+    printf "%-32s " "Repairing permissions ..."
+    if repair_permissions; then
         printf '[OK]\n'
     else
         printf '[FAILED]\n'
