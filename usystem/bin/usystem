@@ -18,7 +18,6 @@ declare -r PS4='debug($LINENO) ${FUNCNAME[0]:+${FUNCNAME[0]}}(): ';
 declare -r USYSTEM_ROOT_DIR=/volume1/@usystem
 declare -r USYSTEM_WORK_DIR=${USYSTEM_ROOT_DIR}/usystem
 declare -r CLI_EXEC_DATE=$(date +'%Y%m%d-%H%M%S')
-declare -r UMASK=0022
 
 # TODO: Upgrade to global option
 declare -r BRANCH='main'
@@ -28,6 +27,7 @@ declare -r BRANCH='main'
 # functions
 ################################################################################
 function _download() {
+    umask 022
     if wget -L https://github.com/TimmerTech/synology-usystem/archive/main.tar.gz -O ${USYSTEM_ROOT_DIR}/usystem.tar.gz -o "${USYSTEM_WORK_DIR}"/log/usystem.download.log > /dev/null 2>&1; then
         return 0
     else
@@ -156,7 +156,9 @@ function backup() {
         esac
     done
 
+    umask 022
     rm -f "${USYSTEM_ROOT_DIR}"/usystem.tar.gz
+
     printf "%-32s" "Creating backup ..."
     if tar -czf "${USYSTEM_ROOT_DIR}/backup/usystem.backup.${CLI_EXEC_DATE}.tar.gz" --exclude usystem/tmp -C "${USYSTEM_ROOT_DIR}" usystem/; then
         printf '[OK]\n'
@@ -183,6 +185,9 @@ function upgrade() {
             ;;
         esac
     done
+
+    # Set umask
+    umask 022
 
     # Create backup
     $(basename "${0}") backup
