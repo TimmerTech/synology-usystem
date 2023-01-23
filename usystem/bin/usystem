@@ -173,6 +173,8 @@ function main_help() {
     printf "%-4s%-23s %s\n" "" "version" "show version";
     echo
     echo Commands:
+    printf "%-4s%-23s %s\n" "" "repair" "Install usystem";
+    printf "%-4s%-23s %s\n" "" "repair" "Upgrade usystem";
     printf "%-4s%-23s %s\n" "" "repair" "Repair usystem";
 
     exit "${1:-0}";
@@ -189,7 +191,7 @@ function main() {
     fi
 
     case ${1} in
-        help | version | install | repair )
+        help | version | install | upgrade | repair )
             $1 "${@:2}";
         ;;
         * )
