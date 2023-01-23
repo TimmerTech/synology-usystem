@@ -25,12 +25,9 @@ case "$1" in
                     echo "Synology User System: Updating; /etc/profile"
 cat >> /etc/profile <<"EOF"
 
-# USYSTEM
 # Loading Synology User System
-if [ -f /usys/etc/profile ]; then
-    if bash -n /usys/etc/profile; then
-        . /usys/etc/profile
-    fi
+if [ -r /usys/etc/profile ] && bash -n /usys/etc/profile; then
+    . /usys/etc/profile
 fi
 EOF
                 fi

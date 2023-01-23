@@ -71,7 +71,7 @@ function repair() {
 }
 
 function install_help() {
-    echo $CLI_NAME repair
+    echo $CLI_NAME install
     echo
     echo Description:
     printf "%-4s%s\n" "" "Repair usystem, used after DSM upgrade or update."
