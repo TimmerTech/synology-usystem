@@ -32,7 +32,10 @@ if [ -f /etc/rc.usystem ] && [ -x /etc/rc.usystem ]; then
     # Load all additional scripts from /usys/etc/rc.d
     for RC in "${USYS_DIR}"/etc/rc.d/rc.*; do
         if [ -f "${RC}" ]; then
-            "${RC}" start
+            # Test for syntax errors
+            if bash -n "${RC}"; then
+                "${RC}" start
+            fi
         fi
     done
 fi
