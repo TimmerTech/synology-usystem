@@ -78,8 +78,6 @@ function repair_permissions() {
 }
 
 function repair() {
-    printf "%s\n\n" "usystem repair"
-
     while [ ${#} -gt 0 ]; do
         case $1 in
             -h | --help | help )
@@ -132,8 +130,6 @@ function install() {
             ;;
         esac
     done
-
-    printf "%s\n\n" "usystem install"
 
     echo "Downloading..."
     _download
