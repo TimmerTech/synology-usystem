@@ -46,6 +46,9 @@ function repair_permissions() {
     if ! chmod -R 755 "${USYSTEM_WORK_DIR}"/bin; then
         return 1
     fi
+    if ! chmod 755 "${USYSTEM_WORK_DIR}"/etc/certs; then
+        return 1
+    fi
     if ! chmod 755 "${USYSTEM_WORK_DIR}"/etc/account.conf; then
         return 1
     fi
