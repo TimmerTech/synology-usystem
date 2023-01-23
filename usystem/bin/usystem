@@ -28,7 +28,7 @@ declare -r BRANCH='main'
 ################################################################################
 function _download() {
     umask 022
-    if wget -L https://github.com/TimmerTech/synology-usystem/archive/main.tar.gz -O ${USYSTEM_ROOT_DIR}/usystem.tar.gz -o "${USYSTEM_WORK_DIR}"/log/usystem.download.log > /dev/null 2>&1; then
+    if wget -L https://github.com/TimmerTech/synology-usystem/archive/main.tar.gz -O ${USYSTEM_ROOT_DIR}/usystem.tar.gz -o "${USYSTEM_WORK_DIR}/log/usystem.download.${CLI_EXEC_DATE}.log" > /dev/null 2>&1; then
         return 0
     else
         return 1
