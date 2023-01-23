@@ -137,6 +137,34 @@ function install() {
     _download
 }
 
+function backup_help() {
+    echo $CLI_NAME upgrade
+    echo
+    echo Description:
+    printf "%-4s%s\n" "" "Create backup of usystem."
+    exit 0
+}
+
+function backup() {
+    while [ ${#} -gt 0 ]; do
+        case $1 in
+            -h | --help | help )
+                backup_help
+            ;;
+        esac
+    done
+
+    rm -f "${USYSTEM_ROOT_DIR}"/usystem.tar.gz
+    printf "%-32s" "Creating backup ..."
+    if tar -czf "${USYSTEM_ROOT_DIR}/backup/usystem.backup.$(date +'%Y%m%d-%H%M%S').tar.gz" --exclude usystem/tmp -C "${USYSTEM_ROOT_DIR}" usystem/; then
+        printf '[OK]\n'
+    else
+        printf '[FAILED]\n'
+        echo "ERROR: Failed to create backup"
+        exit 1
+    fi
+}
+
 function upgrade_help() {
     echo $CLI_NAME upgrade
     echo
@@ -154,15 +182,8 @@ function upgrade() {
         esac
     done
 
-    rm -f "${USYSTEM_ROOT_DIR}"/usystem.tar.gz
-    printf "%-32s" "Creating backup ..."
-    if tar -czf "${USYSTEM_ROOT_DIR}/backup/usystem.backup.$(date +'%Y%m%d-%H%M%S').tar.gz" --exclude usystem/tmp -C "${USYSTEM_ROOT_DIR}" usystem/; then
-        printf '[OK]\n'
-    else
-        printf '[FAILED]\n'
-        echo "ERROR: Failed to create backup"
-        exit 1
-    fi
+    # Create backup
+    ${0} backup
 
     printf "%-32s" "Downloading upgrade ..."
     if _download; then
@@ -191,8 +212,9 @@ function main_help() {
     printf "%-4s%-23s %s\n" "" "version" "show version";
     echo
     echo Commands:
-    printf "%-4s%-23s %s\n" "" "repair" "Install usystem";
-    printf "%-4s%-23s %s\n" "" "repair" "Upgrade usystem";
+    printf "%-4s%-23s %s\n" "" "backup" "Backup usystem";
+    printf "%-4s%-23s %s\n" "" "install" "Install usystem";
+    printf "%-4s%-23s %s\n" "" "upgrade" "Upgrade usystem";
     printf "%-4s%-23s %s\n" "" "repair" "Repair usystem";
 
     exit "${1:-0}";
@@ -209,7 +231,7 @@ function main() {
     fi
 
     case ${1} in
-        help | version | install | upgrade | repair )
+        help | version | backup | install | upgrade | repair )
             $1 "${@:2}";
         ;;
         * )
