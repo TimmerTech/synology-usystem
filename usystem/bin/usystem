@@ -80,6 +80,9 @@ function repair_permissions() {
     if ! chown -R root:administrators "${USYSTEM_WORK_DIR}"/etc; then
         return 1
     fi
+    if ! chown -R root:administrators "${USYSTEM_WORK_DIR}"/log; then
+        return 1
+    fi
 
     return 0
 }
