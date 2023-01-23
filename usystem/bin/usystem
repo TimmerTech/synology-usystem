@@ -52,7 +52,7 @@ function repair() {
     done
 
     printf "%-32s " "Repairing rc.usystem ..."
-    if cp "${USYSTEM_WORK_DIR}/etc.defaults/rc.usystem" /etc; then
+    if cp "${USYSTEM_WORK_DIR}/etc/rc.usystem" /etc; then
         printf '[OK]\n'
     else
         printf '[FAILED]\n'
@@ -60,7 +60,7 @@ function repair() {
     fi
 
     printf "%-32s " "Repairing rc.local ..."
-    if cp "${USYSTEM_WORK_DIR}/etc.defaults/rc.local" /etc; then
+    if cp "${USYSTEM_WORK_DIR}/etc/rc.local" /etc; then
         printf '[OK]\n'
     else
         printf '[FAILED]\n'

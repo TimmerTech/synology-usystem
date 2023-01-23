@@ -9,8 +9,14 @@ case "$1" in
         echo "Starting usystem"
         if test -n "${USYSTEM_DIR}"; then
             if ! grep ' /usys ' /proc/mounts > /dev/null 2>&1; then
+                # Mount user system
                 mkdir -p /usys
                 mount -o bind "${USYSTEM_DIR}" /usys
+
+                # Mount tmpfs to usys, so that we do not clutter the OS
+                # and there is only a single tmpfs in use
+                mkdir -p /usys/tmp
+                mount -o bind /tmp /usys/tmp
             fi
         fi
     ;;

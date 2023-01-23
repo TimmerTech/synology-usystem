@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+################################################################################
+# WARNING: DO NOT EXIT
+#
+# IF YOU NEED ADDITONAL CHANGES BEYOND PLEASE SUBMIT A MERGE REQUEST.
+# THIS FILE WILL GET OVERRIDEN WHEN YOU UPDATE USYSTEM.
+#
+# URL: https://github.com/timmertech/synology-usystem
+#
+################################################################################
+
+
+# bash strict mode
+set -T # inherit DEBUG and RETURN trap for functions
+set -C # prevent file overwrite by > &> <>
+set -E # inherit -e
+set -e # exit immediately on errors
+set -u # exit on not assigned variables
+set -o pipefail # exit on pipe failure
+
+
+################################################################################
+# global variable
+################################################################################
+declare -r USYS_DIR=/usys
+
+
+# Mount Synology User System
+if [ -f /etc/rc.usystem ] && [ -x /etc/rc.usystem ]; then
+    /etc/rc.usystem start
+
+    # Load all additional scripts from /usys/etc/rc.d
+    for RC in "${USYS_DIR}"/etc/rc.d/rc.*; do
+        if [ -f "${RC}" ]; then
+            "${RC}" start
+        fi
+    done
+fi
+
+exit 0
