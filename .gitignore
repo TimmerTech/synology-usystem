@@ -1,5 +1,8 @@
-usystem/log/
+usystem/log/*
 !usystem/log/.keep
-usystem/etc/certs/
+usystem/etc/certs/*
 !usystem/etc/certs/.keep
+!usystem/etc/profile.d/.keep
+usystem/sbin/*
+!usystem/sbin/.keep
 usystem/tmp/
