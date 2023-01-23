@@ -17,6 +17,23 @@ case "$1" in
                 # and there is only a single tmpfs in use
                 mkdir -p /usys/tmp
                 mount -o bind /tmp /usys/tmp
+
+                # Add usystem profile to environment
+                if grep -qF '. /usys/etc/profile' /etc/profile; then
+                    echo "Synology User System: Enabled"
+                else
+                    echo "Synology User System: Updating; /etc/profile"
+cat >> /etc/profile <<"EOF"
+
+# USYSTEM
+# Loading Synology User System
+if [ -f /usys/etc/profile ]; then
+    if bash -n /usys/etc/profile; then
+        . /usys/etc/profile
+    fi
+fi
+EOF
+                fi
             fi
         fi
     ;;

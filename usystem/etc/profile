@@ -1,0 +1,18 @@
+# shellcheck disable=SC1113,SC2148
+#/usys/etc/profile
+declare -r USYS_DIR=/usys
+
+# Define
+export USYS_DIR=${USYS_DIR}
+
+# Load all scripts from profile.d
+for PROFILE in "${USYS_DIR}"/etc/profile.d/*; do
+    if [ -f "${PROFILE}" ]; then
+        # Test for syntax errors
+        if bash -n "${PROFILE}"; then
+            # Load profile
+            # shellcheck disable=SC1090
+            . "${PROFILE}"
+        fi
+    fi
+done
