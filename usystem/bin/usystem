@@ -10,41 +10,28 @@ set -o pipefail # exit on pipe failure
 
 
 ################################################################################
-# check for needed commands
-################################################################################
-function import() {
-    declare -r cmd_name=$1;
-
-    if ! which "$cmd_name" > /dev/null 2>&1; then
-        echo "$cmd_name" not found.
-        echo Make sure you have installed it.
-        echo install "$cmd_name" from here:
-        case $cmd_name in
-            yq )
-                echo 'https://github.com/mikefarah/yq';
-            ;;
-            * )
-                echo 'your OS repository or search the Internet';
-            ;;
-        esac
-        exit 1;
-    fi
-}
-
-import echo
-import printf
-
-################################################################################
 # global variable
 ################################################################################
 declare -r CLI_VERSION='1.0.0';
 declare -r CLI_NAME='usystem';
 declare -r PS4='debug($LINENO) ${FUNCNAME[0]:+${FUNCNAME[0]}}(): ';
-declare -r USYSTEM_DIR=/volume1/@usystem/usystem
+declare -r USYSTEM_ROOT_DIR=/volume1/@usystem
+declare -r USYSTEM_WORK_DIR=${USYSTEM_ROOT_DIR}/usystem
+
+# TODO: Upgrade to global option
+declare -r BRANCH='main'
 
 
 ################################################################################
 # functions
+################################################################################
+function _download() {
+    wget -L https://github.com/TimmerTech/synology-usystem/archive/main.tar.gz -O ${USYSTEM_ROOT_DIR}/usystem.tar.gz
+}
+
+
+################################################################################
+# commands
 ################################################################################
 function repair_help() {
     echo $CLI_NAME repair
@@ -65,7 +52,7 @@ function repair() {
     done
 
     printf "%-32s " "Repairing rc.usystem ..."
-    if cp "${USYSTEM_DIR}/etc.defaults/rc.usystem" /etc; then
+    if cp "${USYSTEM_WORK_DIR}/etc.defaults/rc.usystem" /etc; then
         printf '[OK]\n'
     else
         printf '[FAILED]\n'
@@ -73,7 +60,7 @@ function repair() {
     fi
 
     printf "%-32s " "Repairing rc.local ..."
-    if cp "${USYSTEM_DIR}/etc.defaults/rc.local" /etc; then
+    if cp "${USYSTEM_WORK_DIR}/etc.defaults/rc.local" /etc; then
         printf '[OK]\n'
     else
         printf '[FAILED]\n'
@@ -81,6 +68,22 @@ function repair() {
     fi
 
     exit 0;
+}
+
+function install_help() {
+    echo $CLI_NAME repair
+    echo
+    echo Description:
+    printf "%-4s%s\n" "" "Repair usystem, used after DSM upgrade or update."
+    printf "%-4s%s\n" "" "This will mount and relink usystem to your Synology"
+    exit 0
+}
+
+function install() {
+    echo "Downloading..."
+    _download
+
+
 }
 
 function main_help() {
@@ -111,7 +114,7 @@ function main() {
     fi
 
     case ${1} in
-        help | version | repair )
+        help | version | install | repair )
             $1 "${@:2}";
         ;;
         * )
