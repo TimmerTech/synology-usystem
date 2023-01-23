@@ -183,7 +183,7 @@ function upgrade() {
     done
 
     # Create backup
-    ${0} backup
+    $(basename "${0}") backup
 
     printf "%-32s" "Downloading upgrade ..."
     if _download; then
