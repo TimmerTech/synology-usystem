@@ -16,7 +16,7 @@ is_substring(){
 ################################################################################
 # PATH updates
 ################################################################################
-if id -u -eq 0; then
+if [ "$(id -u)" -eq 0 ]; then
     if ! is_substring "/usys/sbin" "$PATH"; then
         export PATH=/usys/sbin:$PATH
     fi
