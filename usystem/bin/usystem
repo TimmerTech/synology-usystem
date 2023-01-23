@@ -73,6 +73,7 @@ function repair_permissions() {
 
 function repair() {
     printf "%s\n\n" "usystem repair"
+
     while [ ${#} -gt 0 ]; do
         case $1 in
             -h | --help | help )
@@ -118,10 +119,46 @@ function install_help() {
 }
 
 function install() {
+    while [ ${#} -gt 0 ]; do
+        case $1 in
+            -h | --help | help )
+                install_help
+            ;;
+        esac
+    done
+
+    printf "%s\n\n" "usystem install"
+
     echo "Downloading..."
     _download
+}
 
+function upgrade_help() {
+    echo $CLI_NAME upgrade
+    echo
+    echo Description:
+    printf "%-4s%s\n" "" "Upgrade to latest version of usystem."
+    exit 0
+}
 
+function upgrade() {
+    while [ ${#} -gt 0 ]; do
+        case $1 in
+            -h | --help | help )
+                upgrade_help
+            ;;
+        esac
+    done
+
+    rm -f "${USYSTEM_ROOT_DIR}"/usystem.tar.gz
+    printf "%-32s " "Creating backup ..."
+    tar -czf "${USYSTEM_ROOT_DIR}/usystem.bak-$(date +'%Y-%m-%d-%H%M%S').tar.gz" --strip-comonents=1 "${USYSTEM_ROOT_DIR}"
+
+    _download
+    #printf "%-32s " "Upgrading ..."
+    #if tar -xfz "${USYSTEM_ROOT_DIR}"/usystem.tar.gz --strip-components=1 -C "${USYSTEM_ROOT_DIR}"; then
+    #    printf '[OK]\n'
+    #fi
 }
 
 function main_help() {
