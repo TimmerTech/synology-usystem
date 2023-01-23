@@ -185,6 +185,8 @@ function upgrade() {
     # Create backup
     $(basename "${0}") backup
 
+    rm -f "${USYSTEM_ROOT_DIR}/usystem.tar.gz"
+
     printf "%-32s" "Downloading upgrade ..."
     if _download; then
         printf '[OK]\n'
