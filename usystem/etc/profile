@@ -30,7 +30,7 @@ fi
 # profile.d
 ################################################################################
 # Load all scripts from profile.d
-for PROFILE in "${USYS_DIR}"/etc/profile.d/*; do
+for PROFILE in /usys/etc/profile.d/*; do
     if [ -r "${PROFILE}" ] && bash -n "${PROFILE}"; then
         # Load profile
         # shellcheck disable=SC1090
