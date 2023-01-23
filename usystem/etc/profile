@@ -31,12 +31,9 @@ fi
 ################################################################################
 # Load all scripts from profile.d
 for PROFILE in "${USYS_DIR}"/etc/profile.d/*; do
-    if [ -f "${PROFILE}" ]; then
-        # Test for syntax errors
-        if bash -n "${PROFILE}"; then
-            # Load profile
-            # shellcheck disable=SC1090
-            . "${PROFILE}"
-        fi
+    if [ -r "${PROFILE}" ] && bash -n "${PROFILE}"; then
+        # Load profile
+        # shellcheck disable=SC1090
+        . "${PROFILE}"
     fi
 done
