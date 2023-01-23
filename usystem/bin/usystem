@@ -210,6 +210,8 @@ function upgrade() {
         printf '[FAILED]\n'
         # TODO: REVERT BACKUP
     fi
+
+    $(basename "${0}") repair
 }
 
 function main_help() {
