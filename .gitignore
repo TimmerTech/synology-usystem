@@ -1,2 +1,4 @@
 log/
 !log/.keep
+etc/certs/
+!etc/certs/.keep
