@@ -2,3 +2,4 @@ usystem/log/
 !usystem/log/.keep
 usystem/etc/certs/
 !usystem/etc/certs/.keep
+usystem/tmp/
