@@ -152,7 +152,7 @@ function upgrade() {
 
     rm -f "${USYSTEM_ROOT_DIR}"/usystem.tar.gz
     printf "%-32s " "Creating backup ..."
-    tar -czf "${USYSTEM_ROOT_DIR}/usystem.bak.$(date +'%Y-%m-%d-%H%M%S').tar.gz" --strip-comonents=1 "${USYSTEM_ROOT_DIR}"
+    tar -czf "${USYSTEM_ROOT_DIR}/usystem.bak.$(date +'%Y-%m-%d-%H%M%S').tar.gz" -C "${USYSTEM_ROOT_DIR}" usystem/
 
     _download
     #printf "%-32s " "Upgrading ..."
