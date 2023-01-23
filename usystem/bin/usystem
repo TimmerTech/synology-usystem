@@ -155,8 +155,8 @@ function upgrade() {
     done
 
     rm -f "${USYSTEM_ROOT_DIR}"/usystem.tar.gz
-    printf "%-32s " "Creating backup ..."
-    if tar -czf "${USYSTEM_ROOT_DIR}/usystem.backup.$(date +'%Y%m%d-%H%M%S').tar.gz" --exclude usystem/tmp -C "${USYSTEM_ROOT_DIR}" usystem/; then
+    printf "%-32s" "Creating backup ..."
+    if tar -czf "${USYSTEM_ROOT_DIR}/backup/usystem.backup.$(date +'%Y%m%d-%H%M%S').tar.gz" --exclude usystem/tmp -C "${USYSTEM_ROOT_DIR}" usystem/; then
         printf '[OK]\n'
     else
         printf '[FAILED]\n'

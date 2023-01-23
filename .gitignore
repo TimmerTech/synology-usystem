@@ -1,10 +1,11 @@
-usystem/log/*
-!usystem/log/.keep
+backup/
+!backup/.keep
 usystem/etc/certs/*
 !usystem/etc/certs/.keep
 !usystem/etc/profile.d/.keep
+usystem/log/*
+!usystem/log/.keep
 usystem/sbin/*
 !usystem/sbin/.keep
 usystem/tmp/
 usystem.tar.gz
-usystem.backup.*.tar.gz
