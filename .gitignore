@@ -1,4 +1,4 @@
-backup/
+backup/*
 !backup/.keep
 usystem/etc/certs/*
 !usystem/etc/certs/.keep
