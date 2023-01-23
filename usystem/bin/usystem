@@ -138,7 +138,7 @@ function install() {
 }
 
 function backup_help() {
-    echo $CLI_NAME upgrade
+    echo $CLI_NAME backup
     echo
     echo Description:
     printf "%-4s%s\n" "" "Create backup of usystem."
