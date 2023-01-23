@@ -195,7 +195,7 @@ function upgrade() {
     fi
 
     printf "%-32s " "Upgrading ..."
-    if tar -xfz "${USYSTEM_ROOT_DIR}"/usystem.tar.gz --strip-components=1 -C "${USYSTEM_ROOT_DIR}"; then
+    if tar -xzf "${USYSTEM_ROOT_DIR}"/usystem.tar.gz --strip-components=1 -C "${USYSTEM_ROOT_DIR}"; then
         printf '[OK]\n'
     else
         printf '[FAILED]\n'
