@@ -49,28 +49,35 @@ function repair_help() {
 }
 
 function repair_permissions() {
-    if ! chmod -R 755 "${USYSTEM_WORK_DIR}"/bin; then
+    if ! chmod -R 775 "${USYSTEM_WORK_DIR}"/bin; then
         return 1
     fi
     if ! chmod 755 "${USYSTEM_WORK_DIR}"/etc/certs; then
         return 1
     fi
-    if ! chmod 755 "${USYSTEM_WORK_DIR}"/etc/account.conf; then
+    if ! chmod 775 "${USYSTEM_WORK_DIR}"/etc/account.conf; then
         return 1
     fi
-    if ! chmod 755 "${USYSTEM_WORK_DIR}"/etc/http.header; then
+    if ! chmod 775 "${USYSTEM_WORK_DIR}"/etc/http.header; then
         return 1
     fi
-    if ! chmod -R 755 "${USYSTEM_WORK_DIR}"/etc/profile*; then
+    if ! chmod -R 775 "${USYSTEM_WORK_DIR}"/etc/profile*; then
         return 1
     fi
-    if ! chmod -R 755 "${USYSTEM_WORK_DIR}"/etc/rc.*; then
+    if ! chmod -R 775 "${USYSTEM_WORK_DIR}"/etc/rc.*; then
         return 1
     fi
     if ! chmod -R 700 "${USYSTEM_WORK_DIR}"/sbin; then
         return 1
     fi
-    if ! chmod 755 "${USYSTEM_WORK_DIR}/log"; then
+    if ! chmod 775 "${USYSTEM_WORK_DIR}/log"; then
+        return 1
+    fi
+
+    if ! chown -R root:administrators "${USYSTEM_WORK_DIR}"/bin; then
+        return 1
+    fi
+    if ! chown -R root:administrators "${USYSTEM_WORK_DIR}"/etc; then
         return 1
     fi
 
