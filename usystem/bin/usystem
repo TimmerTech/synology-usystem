@@ -199,7 +199,7 @@ function upgrade() {
         printf '[OK]\n'
     else
         printf '[FAILED]\n'
-        echo "ERROR: Failed to download; see log: /usys/log/usystem.download.log"
+        echo "ERROR: Failed to download; see log: /usys/log/usystem.download.${CLI_EXEC_DATE}.log"
         exit 1
     fi
 
