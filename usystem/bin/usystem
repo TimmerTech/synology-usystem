@@ -231,7 +231,13 @@ function main() {
     fi
 
     case ${1} in
-        help | version | backup | install | upgrade | repair )
+        help )
+            main_help 0;
+        ;;
+        version )
+            version
+        ;;
+        backup | install | upgrade | repair )
             $1 "${@:2}";
         ;;
         * )
