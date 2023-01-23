@@ -155,7 +155,7 @@ function backup() {
     umask 022
     rm -f "${USYSTEM_ROOT_DIR}"/usystem.tar.gz
 
-    printf "%-32s" "Creating backup ..."
+    printf "%-32s " "Creating backup ..."
     if tar -czf "${USYSTEM_ROOT_DIR}/backup/usystem.backup.${CLI_EXEC_DATE}.tar.gz" --exclude usystem/tmp -C "${USYSTEM_ROOT_DIR}" usystem/; then
         printf '[OK]\n'
     else
@@ -190,7 +190,7 @@ function upgrade() {
 
     rm -f "${USYSTEM_ROOT_DIR}/usystem.tar.gz"
 
-    printf "%-32s" "Downloading upgrade ..."
+    printf "%-32s " "Downloading upgrade ..."
     if _download; then
         printf '[OK]\n'
     else
@@ -199,7 +199,7 @@ function upgrade() {
         exit 1
     fi
 
-    printf "%-32s" "Upgrading ..."
+    printf "%-32s " "Upgrading ..."
     if tar -xvf "${USYSTEM_ROOT_DIR}/usystem.tar.gz" --strip-components=1 -C "${USYSTEM_ROOT_DIR}" > "${USYSTEM_WORK_DIR}/log/usystem.upgrade.${CLI_EXEC_DATE}.log" 2>&1; then
         printf '[OK]\n'
     else
