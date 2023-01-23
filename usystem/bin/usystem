@@ -26,7 +26,11 @@ declare -r BRANCH='main'
 # functions
 ################################################################################
 function _download() {
-    wget -L https://github.com/TimmerTech/synology-usystem/archive/main.tar.gz -O ${USYSTEM_ROOT_DIR}/usystem.tar.gz
+    if wget -L https://github.com/TimmerTech/synology-usystem/archive/main.tar.gz -O ${USYSTEM_ROOT_DIR}/usystem.tar.gz > "${USYSTEM_WORK_DIR}"/log/usystem.download.log; then
+        return 0
+    else
+        return 1
+    fi
 }
 
 
@@ -160,7 +164,15 @@ function upgrade() {
         exit 1
     fi
 
-    _download
+    printf "%-32s" "Downloading upgrade ..."
+    if _download; then
+        printf '[OK]\n'
+    else
+        printf '[FAILED]\n'
+        echo "ERROR: Failed to download; see log: /usys/log/usystem.download.log"
+        exit 1
+    fi
+
     #printf "%-32s " "Upgrading ..."
     #if tar -xfz "${USYSTEM_ROOT_DIR}"/usystem.tar.gz --strip-components=1 -C "${USYSTEM_ROOT_DIR}"; then
     #    printf '[OK]\n'
