@@ -51,6 +51,9 @@ function remove_git() {
     if [ -f "${USYSTEM_ROOT_DIR}/.gitignore" ]; then
         rm "${USYSTEM_ROOT_DIR}/.gitignore"
     fi
+    if [ -f "${USYSTEM_ROOT_DIR}/.shellcheckrc" ]; then
+        rm "${USYSTEM_ROOT_DIR}/.shellcheckrc"
+    fi
 }
 
 function create_directories() {
