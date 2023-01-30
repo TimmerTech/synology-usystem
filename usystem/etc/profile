@@ -16,12 +16,15 @@ is_substring(){
 ################################################################################
 # PATH updates
 ################################################################################
-if ! is_substring "/usys/sbin" "$PATH"; then
-    export PATH=/usys/sbin:$PATH
-fi
-if ! is_substring "/usys/bin" "$PATH"; then
-    export PATH=/usys/bin:$PATH
-fi
+
+# Load usystem.conf
+# shellcheck source=./usystem.conf
+source /usys/etc/usystem.conf
+for P in "${PATH_ENTRIES[@]}"; do
+    if ! is_substring "${P}" "${PATH}"; then
+        export PATH="${P}:${PATH}"
+    fi
+done
 
 
 ################################################################################
