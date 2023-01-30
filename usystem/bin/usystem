@@ -80,7 +80,7 @@ function create_directories() {
 
 function clean_logs() {
     printf "%-32s " "Cleaning logs ..."
-    rm -rf "${USYSTEM_WORK_DIR}/log/*"
+    rm -rf "${USYSTEM_WORK_DIR}"/log/*
     printf '[OK]\n'
 }
 
