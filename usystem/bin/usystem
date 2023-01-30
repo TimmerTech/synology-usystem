@@ -388,8 +388,6 @@ function install() {
         exit 1
     fi
 
-    # Directories are created now run repair with hidden parameter to
-    # set the console message to 'Installing'
     if [ "${FORCE}" -eq 1 ]; then
         repair --install --force
     else
@@ -440,10 +438,15 @@ function upgrade_help() {
 }
 
 function upgrade() {
+    FORCE=0
     while [ ${#} -gt 0 ]; do
         case $1 in
             -h | --help | help )
                 upgrade_help
+            ;;
+            -f | --force )
+                FORCE=1
+                shift 1
             ;;
         esac
     done
@@ -552,7 +555,11 @@ function upgrade() {
         exit 1
     fi
 
-    repair "$@"
+    if [ "${FORCE}" -eq 1 ]; then
+        repair --force
+    else
+        repair
+    fi
 }
 
 function main_help() {
