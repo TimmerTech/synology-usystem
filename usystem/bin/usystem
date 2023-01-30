@@ -294,6 +294,8 @@ function install() {
     if [ -d "${USYSTEM_WORK_DIR}" ] && [ "${FORCE}" -eq 0 ]; then
         echo "${USYSTEM_WORK_DIR} already exists; please use 'usystem upgrade'"
         exit 1
+    else
+        echo "${USYSTEM_WORK_DIR} already exists; forcing install"
     fi
 
     remove_usystem_archive
