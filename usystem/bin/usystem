@@ -90,7 +90,7 @@ function clean_backups() {
 
     printf "%-32s " "Cleaning backups ..."
     # shellcheck disable=SC2010
-    ls -tp "${USYSTEM_ROOT_DIR}/backup/" | grep -v '/$' | tail -n +$((1 + BACKUP_KEEP_LAST)) | xargs -I {} rm -- {}
+    ls -tp "${USYSTEM_ROOT_DIR}/backup/" | grep -v '/$' | tail -n "+${BACKUP_KEEP_LAST}" | xargs -I {} rm -- {}
     printf '[OK]\n'
 }
 
