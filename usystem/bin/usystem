@@ -341,7 +341,7 @@ function install() {
 
     # Directories are created now run repair with hidden parameter to
     # set the console message to 'Installing'
-    $(basename "${0}") repair --install
+    repair --install
 }
 
 function backup_help() {
