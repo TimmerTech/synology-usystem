@@ -17,6 +17,7 @@ declare -r CLI_NAME='usystem';
 declare -r PS4='debug($LINENO) ${FUNCNAME[0]:+${FUNCNAME[0]}}(): ';
 declare -r USYSTEM_ROOT_DIR=/volume1/@usystem;
 declare -r USYSTEM_WORK_DIR=${USYSTEM_ROOT_DIR}/usystem;
+declare -r USYSTEM_ARCHIVE=${USYSTEM_ROOT_DIR}/usystem.tar.gz
 
 CLI_EXEC_DATE="$(date +'%Y%m%d-%H%M%S')";
 readonly CLI_EXEC_DATE
@@ -31,7 +32,7 @@ function _download() {
     local LOG_LOCATION="${1}"
 
     umask 022
-    if wget -L https://github.com/TimmerTech/synology-usystem/archive/main.tar.gz -O ${USYSTEM_ROOT_DIR}/usystem.tar.gz -o "${LOG_LOCATION}" > /dev/null 2>&1; then
+    if wget -L https://github.com/TimmerTech/synology-usystem/archive/main.tar.gz -O "${USYSTEM_ARCHIVE}" -o "${LOG_LOCATION}" > /dev/null 2>&1; then
         return 0
     else
         return 1
@@ -42,6 +43,12 @@ function _download() {
 ################################################################################
 # commands
 ################################################################################
+function remove_usystem_archive() {
+    if [ -f "${USYSTEM_ARCHIVE}" ]; then
+        rm -f "${USYSTEM_ARCHIVE}"
+    fi
+}
+
 function remove_git() {
     # Remove .git directory
     if [ -d "${USYSTEM_ROOT_DIR}/.git" ]; then
@@ -261,10 +268,15 @@ function install_help() {
 }
 
 function install() {
+    FORCE=0
     while [ ${#} -gt 0 ]; do
         case $1 in
             -h | --help | help )
                 install_help
+            ;;
+
+            -f | --force )
+                FORCE=1
             ;;
         esac
     done
@@ -279,10 +291,12 @@ function install() {
         mkdir -p "${USYSTEM_ROOT_DIR}"
     fi
 
-    if [ -d "${USYSTEM_WORK_DIR}" ]; then
+    if [ -d "${USYSTEM_WORK_DIR}" ] && [ "${FORCE}" -eq 0 ]; then
         echo "${USYSTEM_WORK_DIR} already exists; please use 'usystem upgrade'"
         exit 1
     fi
+
+    remove_usystem_archive
 
     printf "%-32s " "Downloading usystem ..."
     DOWNLOAD_LOG="${USYSTEM_ROOT_DIR}/usystem.download.${CLI_EXEC_DATE}.log"
@@ -299,12 +313,12 @@ function install() {
 
     printf "%-32s " "Installing ..."
     EXTRACT_LOG="${USYSTEM_ROOT_DIR}/usystem.install.${CLI_EXEC_DATE}.log"
-    if tar -xvf "${USYSTEM_ROOT_DIR}/usystem.tar.gz" --strip-components=1 -C "${USYSTEM_ROOT_DIR}" > "${EXTRACT_LOG}" 2>&1; then
+    if tar -xvf "${USYSTEM_ARCHIVE}" --strip-components=1 -C "${USYSTEM_ROOT_DIR}" > "${EXTRACT_LOG}" 2>&1; then
         printf '[OK]\n'
 
         # Everything went ok; delete install log, and downloaded archive
         rm "${EXTRACT_LOG}"
-        rm "${USYSTEM_ROOT_DIR}/usystem.tar.gz"
+        remove_usystem_archive
         remove_git
     else
         printf '[FAILED]\n'
@@ -390,7 +404,7 @@ function upgrade() {
     $(basename "${0}") backup
 
     # Remove usystem.tar.gz if present
-    rm -f "${USYSTEM_ROOT_DIR}/usystem.tar.gz"
+    remove_usystem_archive
 
     printf "%-32s " "Downloading upgrade ..."
     DOWNLOAD_LOG="${USYSTEM_WORK_DIR}/log/usystem.download.${CLI_EXEC_DATE}.log"
@@ -408,12 +422,12 @@ function upgrade() {
     # Perform upgrade
     printf "%-32s " "Upgrading ..."
     EXTRACT_LOG="${USYSTEM_WORK_DIR}/log/usystem.upgrade.${CLI_EXEC_DATE}.log"
-    if tar -xvf "${USYSTEM_ROOT_DIR}/usystem.tar.gz" --strip-components=1 -C "${USYSTEM_ROOT_DIR}" > "${EXTRACT_LOG}" 2>&1; then
+    if tar -xvf "${USYSTEM_ARCHIVE}" --strip-components=1 -C "${USYSTEM_ROOT_DIR}" > "${EXTRACT_LOG}" 2>&1; then
         printf '[OK]\n'
 
         # Everything went OK, remove log and archive
         rm "${EXTRACT_LOG}"
-        rm "${USYSTEM_ROOT_DIR}/usystem.tar.gz"
+        remove_usystem_archive
         remove_git
     else
         printf '[FAILED]\n'
