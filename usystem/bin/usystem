@@ -232,7 +232,7 @@ function repair() {
         exit 1
     fi
 
-    printf "%-32s " "Repairing permissions ..."
+    printf "%-32s " "Fixing permissions ..."
     if repair_permissions; then
         printf '[OK]\n'
     else
