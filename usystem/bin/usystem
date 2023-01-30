@@ -21,9 +21,6 @@ declare -r USYSTEM_WORK_DIR=${USYSTEM_ROOT_DIR}/usystem;
 CLI_EXEC_DATE="$(date +'%Y%m%d-%H%M%S')";
 readonly CLI_EXEC_DATE
 
-# TODO: Upgrade to global option
-declare -r BRANCH='main'
-
 
 ################################################################################
 # functions
@@ -72,6 +69,69 @@ function create_directories() {
     done
 
     return 0
+}
+
+function clean_logs() {
+    printf "%-32s " "Cleaning logs ..."
+    rm -rf "${USYSTEM_WORK_DIR}/logs/*"
+    printf '[OK]\n'
+}
+
+function clean_backups() {
+    # shellcheck source=../etc/usystem.conf
+    source "${USYSTEM_ROOT_DIR}/etc/usystem.conf"
+
+    printf "%-32s " "Cleaning backups ..."
+    # shellcheck disable=SC2010
+    ls -tp "${USYSTEM_ROOT_DIR}/backup/" | grep -v '/$' | tail -n +$((1 + BACKUP_KEEP_LAST)) | xargs -I {} rm -- {}
+    printf '[OK]\n'
+}
+
+function clean_help() {
+    echo $CLI_NAME clean
+    echo
+    echo Description:
+    printf "%-4s%s\n" "" "Clean usystem"
+    printf "%-4s%s\n" "" "This will cleanup usystem, see usystem.conf for configuration"
+    echo
+    echo Options:
+    printf "%-4s%-23s %s\n" "" "-a, --all" "Cleanup all";
+    printf "%-4s%-23s %s\n" "" "-b, --backups" "Remove old backups";
+    printf "%-4s%-23s %s\n" "" "-l, --logs" "Remove old logs";
+    exit 0
+}
+
+function clean() {
+    if [[ $(/usr/bin/id -u) -ne 0 ]]; then
+        echo "'usystem repair' must be run as root"
+        exit 1
+    fi
+
+    while [ ${#} -gt 0 ]; do
+        case $1 in
+            -h | --help | help )
+                clean_help
+            ;;
+
+            -a | --all )
+                clean_backups
+                clean_logs
+            ;;
+
+            -b | --backups )
+                clean_backups
+            ;;
+
+            -l | --logs )
+                clean_logs
+            ;;
+
+            * )
+                clean_help
+            ;;
+        esac
+    done
+
 }
 
 function repair_help() {
@@ -413,7 +473,7 @@ function main() {
         version )
             version
         ;;
-        backup | install | upgrade | repair | link )
+        backup | install | upgrade | repair | link | clean )
             $1 "${@:2}";
         ;;
         * )
