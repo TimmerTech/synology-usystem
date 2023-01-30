@@ -230,7 +230,7 @@ function repair() {
     # completely restore everything
     #
     # Link usystem resources to OS
-    $(basename "${0}") link
+    link "$@"
 
     exit 0;
 }
@@ -403,7 +403,7 @@ function upgrade() {
     fi
 
     # Create backup
-    $(basename "${0}") backup
+    backup "$@"
 
     # Remove usystem.tar.gz if present
     remove_usystem_archive
@@ -485,7 +485,7 @@ function upgrade() {
         exit 1
     fi
 
-    $(basename "${0}") repair
+    repair "$@"
 }
 
 function main_help() {
