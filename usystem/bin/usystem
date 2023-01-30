@@ -21,6 +21,8 @@ declare -r USYSTEM_WORK_DIR=${USYSTEM_ROOT_DIR}/usystem;
 CLI_EXEC_DATE="$(date +'%Y%m%d-%H%M%S')";
 readonly CLI_EXEC_DATE
 
+declare -r BACKUP_ARCHIVE="${USYSTEM_ROOT_DIR}/backup/usystem.backup.${CLI_EXEC_DATE}.tar.gz"
+
 
 ################################################################################
 # functions
@@ -350,7 +352,7 @@ function backup() {
     fi
 
     printf "%-32s " "Creating backup ..."
-    if tar -czf "${USYSTEM_ROOT_DIR}/backup/usystem.backup.${CLI_EXEC_DATE}.tar.gz" --exclude usystem/tmp -C "${USYSTEM_ROOT_DIR}" usystem/; then
+    if tar -czf "${BACKUP_ARCHIVE}" --exclude usystem/tmp -C "${USYSTEM_ROOT_DIR}" usystem/; then
         printf '[OK]\n'
     else
         printf '[FAILED]\n'
@@ -387,6 +389,7 @@ function upgrade() {
     # Create backup
     $(basename "${0}") backup
 
+    # Remove usystem.tar.gz if present
     rm -f "${USYSTEM_ROOT_DIR}/usystem.tar.gz"
 
     printf "%-32s " "Downloading upgrade ..."
@@ -402,6 +405,7 @@ function upgrade() {
         exit 1
     fi
 
+    # Perform upgrade
     printf "%-32s " "Upgrading ..."
     EXTRACT_LOG="${USYSTEM_WORK_DIR}/log/usystem.upgrade.${CLI_EXEC_DATE}.log"
     if tar -xvf "${USYSTEM_ROOT_DIR}/usystem.tar.gz" --strip-components=1 -C "${USYSTEM_ROOT_DIR}" > "${EXTRACT_LOG}" 2>&1; then
@@ -415,7 +419,41 @@ function upgrade() {
         printf '[FAILED]\n'
         echo "ERROR: Failed to extract; see log: ${EXTRACT_LOG}"
 
-        # TODO: REVERT BACKUP
+        printf "%-32s " "unmounting usystem ..."
+        if grep ' /usys ' /proc/mounts > /dev/null 2>&1; then
+            if umount /usys; then
+                printf '[OK]\n'
+            else
+                printf '[FAILED]\n'
+                echo "ERROR: Failed to umount, manual restore required"
+                exit 1
+            fi
+        else
+            printf '[OK]\n'
+        fi
+
+        printf "%-32s " "Removing current ..."
+        if rm -rf "${USYSTEM_ROOT_DIR}/usystem"; then
+            printf '[OK]\n'
+        else
+            printf '[FAILED]\n'
+            echo "ERROR: Failed to remove current version, manual restore required"
+            exit 1
+        fi
+
+        RESTORE_LOG="${USYSTEM_ROOT_DIR}/usystem.restore.${CLI_EXEC_DATE}.log"
+        printf "%-32s " "Restoring from backup ..."
+        if tar -xvf "${BACKUP_ARCHIVE}" -C "${USYSTEM_ROOT_DIR}" > "${RESTORE_LOG}" 2>&1; then
+            printf '[OK]\n'
+
+            # Restore complete, removing log
+            rm "${REVERT_LOG}"
+        else
+            printf '[FAILED]\n'
+            echo "ERROR: Failed to restore backup ($), manual restore required"
+            echo "ERROR: See restore log: ${RESTORE_LOG}"
+            exit 1
+        fi
 
         # Terminate Upgrade
         exit 1
