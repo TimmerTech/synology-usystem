@@ -202,6 +202,7 @@ function repair_permissions() {
 
 function repair() {
     MSG="Repairing"
+    echo "$1"
     while [ ${#} -gt 0 ]; do
         case $1 in
             -h | --help | help )
