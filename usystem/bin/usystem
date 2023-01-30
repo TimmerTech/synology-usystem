@@ -209,7 +209,6 @@ function repair() {
             ;;
         esac
     done
-    printf "%s\n" "$FORCE"
 
     if [[ $(/usr/bin/id -u) -ne 0 ]]; then
         echo "'usystem repair' must be run as root"
