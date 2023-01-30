@@ -147,10 +147,12 @@ function clean() {
 
             -b | --backups )
                 clean_backups
+                shift 1
             ;;
 
             -l | --logs )
                 clean_logs
+                shift 1
             ;;
 
             * )
