@@ -440,6 +440,7 @@ function upgrade_help() {
 function upgrade() {
     FORCE=0
     while [ ${#} -gt 0 ]; do
+        echo ${#}
         case $1 in
             -h | --help | help )
                 upgrade_help
