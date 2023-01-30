@@ -86,7 +86,7 @@ function clean_logs() {
 
 function clean_backups() {
     # shellcheck source=../etc/usystem.conf
-    source "${USYSTEM_ROOT_DIR}/etc/usystem.conf"
+    source "${USYSTEM_WORK_DIR}/etc/usystem.conf"
 
     printf "%-32s " "Cleaning backups ..."
     # shellcheck disable=SC2010
