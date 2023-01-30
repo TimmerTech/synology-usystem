@@ -110,7 +110,32 @@ function repair() {
         exit 1
     fi
 
+    # Make sure to start usystem
+    "${USYSTEM_WORK_DIR}/etc/rc.usystem" start
+
+    # Link usystem resources to OS
+    $(basename "${0}") link
+
     exit 0;
+}
+
+function link_help() {
+    echo $CLI_NAME link
+    echo
+    echo Description:
+    printf "%-4s%s\n" "" "Link usystem"
+    printf "%-4s%s\n" "" "This will link resources from usystem to the OS."
+    exit 0
+}
+
+function link() {
+    while [ ${#} -gt 0 ]; do
+        case $1 in
+            -h | --help | help )
+                link_help
+            ;;
+        esac
+    done
 }
 
 function install_help() {
@@ -226,6 +251,7 @@ function main_help() {
     printf "%-4s%-23s %s\n" "" "install" "Install usystem";
     printf "%-4s%-23s %s\n" "" "upgrade" "Upgrade usystem";
     printf "%-4s%-23s %s\n" "" "repair" "Repair usystem";
+    printf "%-4s%-23s %s\n" "" "link" "Link usystem to OS";
 
     exit "${1:-0}";
 }
@@ -247,7 +273,7 @@ function main() {
         version )
             version
         ;;
-        backup | install | upgrade | repair )
+        backup | install | upgrade | repair | link )
             $1 "${@:2}";
         ;;
         * )
