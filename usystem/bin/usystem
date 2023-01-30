@@ -198,7 +198,7 @@ function repair_permissions() {
 function repair() {
     MSG="Repairing"
     MSG_CONFIG=${MSG}
-    FORCE=0
+    FORCE_CONFIG=0
     while [ ${#} -gt 0 ]; do
         case $1 in
             -h | --help | help )
@@ -208,9 +208,9 @@ function repair() {
                 MSG="Installing"
                 shift 1
             ;;
-            -f | --force )
+            -f | --force-config )
                 MSG_CONFIG="Override"
-                FORCE=1
+                FORCE_CONFIG=1
                 shift 1
             ;;
         esac
@@ -246,7 +246,7 @@ function repair() {
     fi
 
     # Install/Override Config
-    install_config "${FORCE}" "${MSG_CONFIG}"
+    install_config "${FORCE_CONFIG}" "${MSG_CONFIG}"
 
     # Make sure to start usystem
     "${USYSTEM_WORK_DIR}/etc/rc.usystem" start
@@ -299,6 +299,7 @@ function install_help() {
 
 function install() {
     FORCE=0
+    FORCE_CONFIG=0
     while [ ${#} -gt 0 ]; do
         case $1 in
             -h | --help | help )
@@ -307,6 +308,10 @@ function install() {
 
             -f | --force )
                 FORCE=1
+                shift 1
+            ;;
+            --force-config )
+                FORCE_CONFIG=1
                 shift 1
             ;;
         esac
@@ -393,8 +398,8 @@ function install() {
         exit 1
     fi
 
-    if [ "${FORCE}" -eq 1 ]; then
-        repair --install --force
+    if [ "${FORCE_CONFIG}" -eq 1 ]; then
+        repair --install --force-config
     else
         repair --install
     fi
@@ -444,6 +449,7 @@ function upgrade_help() {
 
 function upgrade() {
     FORCE=0
+    FORCE_CONFIG=0
     while [ ${#} -gt 0 ]; do
         case $1 in
             -h | --help | help )
@@ -453,8 +459,13 @@ function upgrade() {
                 FORCE=1
                 shift 1
             ;;
+            --force-config )
+                FORCE_CONFIG=1
+                shift 1
+            ;;
         esac
     done
+    printf "%s\n" "$@"
 
     # Set umask
     umask 022
@@ -560,8 +571,8 @@ function upgrade() {
         exit 1
     fi
 
-    if [ "${FORCE}" -eq 1 ]; then
-        repair --force
+    if [ "${FORCE_CONFIG}" -eq 1 ]; then
+        repair --force-config
     else
         repair
     fi
