@@ -39,10 +39,6 @@ function _download() {
     fi
 }
 
-
-################################################################################
-# commands
-################################################################################
 function remove_usystem_archive() {
     if [ -f "${USYSTEM_ARCHIVE}" ]; then
         rm -f "${USYSTEM_ARCHIVE}"
@@ -96,6 +92,31 @@ function clean_backups() {
     printf '[OK]\n'
 }
 
+function install_config() {
+    FORCE=${1:-0}
+    while [ ${#} -gt 0 ]; do
+        case $1 in
+            -f | --force )
+                FORCE=1
+                break
+            ;;
+            * )
+                break
+            ;;
+        esac
+    done
+
+    if [ ! -f "${USYSTEM_WORK_DIR}/etc/usystem.conf" ] || [ "${FORCE}" -eq 1 ]; then
+        cp "${USYSTEM_WORK_DIR}/etc/default/usystem.conf" "${USYSTEM_WORK_DIR}/etc/usystem.conf"
+    fi
+
+    return 0
+}
+
+
+################################################################################
+# commands
+################################################################################
 function clean_help() {
     echo $CLI_NAME clean
     echo
@@ -186,7 +207,7 @@ function repair() {
             -h | --help | help )
                 repair_help
             ;;
-            --install )
+            --install | install )
                 MSG="Installing"
                 break
             ;;
@@ -223,6 +244,12 @@ function repair() {
     else
         printf '[FAILED]\n'
         exit 1
+    fi
+
+    printf "%-32s " "${MSG} config ..."
+    if install_config "$@"; then
+        install_config
+        printf '[OK]\n'
     fi
 
     # Make sure to start usystem
@@ -375,7 +402,7 @@ function install() {
 
     # Directories are created now run repair with hidden parameter to
     # set the console message to 'Installing'
-    repair --install
+    repair "$@"
 }
 
 function backup_help() {
