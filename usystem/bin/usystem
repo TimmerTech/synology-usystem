@@ -154,13 +154,10 @@ function clean() {
                 clean_logs
                 shift 1
             ;;
-
-            * )
-                clean_help
-            ;;
         esac
     done
 
+    clean_help
 }
 
 function repair_help() {
