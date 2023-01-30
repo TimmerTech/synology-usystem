@@ -298,6 +298,32 @@ function install() {
         exit 1
     fi
 
+    printf "%-32s " "unmounting usystem tmp ..."
+    if grep ' /usys/tmp ' /proc/mounts > /dev/null 2>&1; then
+        if umount /usys/tmp; then
+            printf '[OK]\n'
+        else
+            printf '[FAILED]\n'
+            echo "ERROR: Failed to umount, manual install required"
+            exit 1
+        fi
+    else
+        printf '[OK]\n'
+    fi
+
+    printf "%-32s " "unmounting usystem ..."
+    if grep ' /usys ' /proc/mounts > /dev/null 2>&1; then
+        if umount /usys; then
+            printf '[OK]\n'
+        else
+            printf '[FAILED]\n'
+            echo "ERROR: Failed to umount, manual install required"
+            exit 1
+        fi
+    else
+        printf '[OK]\n'
+    fi
+
     remove_usystem_archive
 
     printf "%-32s " "Downloading usystem ..."
@@ -434,6 +460,19 @@ function upgrade() {
     else
         printf '[FAILED]\n'
         echo "ERROR: Failed to extract; see log: ${EXTRACT_LOG}"
+
+        printf "%-32s " "unmounting usystem tmp ..."
+        if grep ' /usys/tmp ' /proc/mounts > /dev/null 2>&1; then
+            if umount /usys/tmp; then
+                printf '[OK]\n'
+            else
+                printf '[FAILED]\n'
+                echo "ERROR: Failed to umount, manual install required"
+                exit 1
+            fi
+        else
+            printf '[OK]\n'
+        fi
 
         printf "%-32s " "unmounting usystem ..."
         if grep ' /usys ' /proc/mounts > /dev/null 2>&1; then
