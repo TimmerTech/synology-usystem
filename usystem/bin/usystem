@@ -308,6 +308,7 @@ function install() {
             ;;
         esac
     done
+    echo $FORCE
 
     if [[ $(/usr/bin/id -u) -ne 0 ]]; then
         echo "'usystem install' must be run as root"
