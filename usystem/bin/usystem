@@ -191,6 +191,7 @@ function repair_permissions() {
 
 function repair() {
     MSG="Repairing"
+    MSG_CONFIG=${MSG}
     FORCE=0
     while [ ${#} -gt 0 ]; do
         case $1 in
@@ -202,6 +203,7 @@ function repair() {
                 shift 1
             ;;
             -f | --force )
+                MSG_CONFIG="Override"
                 FORCE=1
                 shift 1
             ;;
@@ -237,7 +239,7 @@ function repair() {
         exit 1
     fi
 
-    printf "%-32s " "${MSG} config ..."
+    printf "%-32s " "${MSG_CONFIG} config ..."
     if install_config "${FORCE}"; then
         install_config
         printf '[OK]\n'
@@ -440,7 +442,6 @@ function upgrade_help() {
 function upgrade() {
     FORCE=0
     while [ ${#} -gt 0 ]; do
-        echo ${#}
         case $1 in
             -h | --help | help )
                 upgrade_help
