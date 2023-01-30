@@ -43,6 +43,16 @@ function _download() {
 ################################################################################
 # commands
 ################################################################################
+function remove_git() {
+    # Remove .git directory
+    if [ -d "${USYSTEM_ROOT_DIR}/.git" ]; then
+        rm -rf "${USYSTEM_ROOT_DIR}/.git"
+    fi
+    if [ -f "${USYSTEM_ROOT_DIR}/.gitignore" ]; then
+        rm "${USYSTEM_ROOT_DIR}/.gitignore"
+    fi
+}
+
 function create_directories() {
     # Create directories
     declare -ra DIRECTORIES=(
@@ -230,6 +240,7 @@ function install() {
         # Everything went ok; delete install log, and downloaded archive
         rm "${EXTRACT_LOG}"
         rm "${USYSTEM_ROOT_DIR}/usystem.tar.gz"
+        remove_git
     else
         printf '[FAILED]\n'
         echo "ERROR: Failed to extract; see log: ${EXTRACT_LOG}"
@@ -319,6 +330,9 @@ function upgrade() {
     DOWNLOAD_LOG="${USYSTEM_WORK_DIR}/log/usystem.download.${CLI_EXEC_DATE}.log"
     if _download "${DOWNLOAD_LOG}"; then
         printf '[OK]\n'
+
+        # Everything went OK; delete download log
+        rm "${DOWNLOAD_LOG}"
     else
         printf '[FAILED]\n'
         echo "ERROR: Failed to download; see log: ${DOWNLOAD_LOG}"
@@ -329,6 +343,11 @@ function upgrade() {
     EXTRACT_LOG="${USYSTEM_WORK_DIR}/log/usystem.upgrade.${CLI_EXEC_DATE}.log"
     if tar -xvf "${USYSTEM_ROOT_DIR}/usystem.tar.gz" --strip-components=1 -C "${USYSTEM_ROOT_DIR}" > "${EXTRACT_LOG}" 2>&1; then
         printf '[OK]\n'
+
+        # Everything went OK, remove log and archive
+        rm "${EXTRACT_LOG}"
+        rm "${USYSTEM_ROOT_DIR}/usystem.tar.gz"
+        remove_git
     else
         printf '[FAILED]\n'
         echo "ERROR: Failed to extract; see log: ${EXTRACT_LOG}"
@@ -369,6 +388,7 @@ function main_help() {
     printf "%-4s%-23s %s\n" "" "upgrade" "Upgrade usystem";
     printf "%-4s%-23s %s\n" "" "repair" "Repair usystem";
     printf "%-4s%-23s %s\n" "" "link" "Link usystem resources to OS";
+    printf "%-4s%-23s %s\n" "" "clean" "Clean usystem";
 
     exit "${1:-0}";
 }
