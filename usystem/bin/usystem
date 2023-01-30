@@ -62,6 +62,8 @@ function create_directories() {
     # Create directories
     declare -ra DIRECTORIES=(
         etc/certs
+        etc/nginx/conf.d
+        etc/nginx/sites.enabled
         log
         reports
         sbin
