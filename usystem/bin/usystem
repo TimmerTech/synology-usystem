@@ -94,9 +94,15 @@ function clean_backups() {
 
 function install_config() {
     FORCE=${1:-0}
+    MSG=${2}
 
     if [ ! -f "${USYSTEM_WORK_DIR}/etc/usystem.conf" ] || [ "${FORCE}" -eq 1 ]; then
-        cp "${USYSTEM_WORK_DIR}/etc/default/usystem.conf" "${USYSTEM_WORK_DIR}/etc/usystem.conf"
+        printf "%-32s " "${MSG} config ..."
+        if cp "${USYSTEM_WORK_DIR}/etc/default/usystem.conf" "${USYSTEM_WORK_DIR}/etc/usystem.conf"; then
+            printf '[OK]\n'
+        else
+            printf '[FAILED]\n'
+        fi
     fi
 
     return 0
@@ -239,11 +245,8 @@ function repair() {
         exit 1
     fi
 
-    printf "%-32s " "${MSG_CONFIG} config ..."
-    if install_config "${FORCE}"; then
-        install_config
-        printf '[OK]\n'
-    fi
+    # Install/Override Config
+    install_config "${FORCE}" "${MSG_CONFIG}"
 
     # Make sure to start usystem
     "${USYSTEM_WORK_DIR}/etc/rc.usystem" start
