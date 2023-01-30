@@ -190,6 +190,9 @@ function repair() {
                 MSG="Installing"
                 break
             ;;
+            * )
+                break
+            ;;
         esac
     done
 
@@ -214,7 +217,7 @@ function repair() {
         exit 1
     fi
 
-    printf "%-32s " "${MSG} permissions ..."
+    printf "%-32s " "Repairing permissions ..."
     if repair_permissions; then
         printf '[OK]\n'
     else
@@ -250,6 +253,9 @@ function link() {
             -h | --help | help )
                 link_help
             ;;
+            * )
+                break
+            ;;
         esac
     done
 
@@ -278,6 +284,9 @@ function install() {
 
             -f | --force )
                 FORCE=1
+                break
+            ;;
+            * )
                 break
             ;;
         esac
@@ -383,6 +392,9 @@ function backup() {
             -h | --help | help )
                 backup_help
             ;;
+            * )
+                break
+            ;;
         esac
     done
 
@@ -416,6 +428,9 @@ function upgrade() {
         case $1 in
             -h | --help | help )
                 upgrade_help
+            ;;
+            * )
+                break
             ;;
         esac
     done
