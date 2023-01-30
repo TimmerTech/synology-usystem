@@ -166,6 +166,9 @@ function repair_help() {
     echo Description:
     printf "%-4s%s\n" "" "Repair usystem, used after DSM upgrade or update."
     printf "%-4s%s\n" "" "This will mount and relink usystem to your Synology"
+    echo
+    echo Options:
+    printf "%-4s%-23s %s\n" "" "--force-config" "Override config";
     exit 0
 }
 
@@ -295,6 +298,10 @@ function install_help() {
     echo Description:
     printf "%-4s%s\n" "" "Install usystem"
     printf "%-4s%s\n" "" "This will install, mount and link usystem to your Synology"
+    echo
+    echo Options:
+    printf "%-4s%-23s %s\n" "" "-f, --force" "Force install";
+    printf "%-4s%-23s %s\n" "" "--force-config" "Override config";
     exit 0
 }
 
@@ -445,6 +452,10 @@ function upgrade_help() {
     echo
     echo Description:
     printf "%-4s%s\n" "" "Upgrade to latest version of usystem."
+    echo
+    echo Options:
+    printf "%-4s%-23s %s\n" "" "-f, --force" "Force upgrade";
+    printf "%-4s%-23s %s\n" "" "--force-config" "Override config";
     exit 0
 }
 
