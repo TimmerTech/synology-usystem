@@ -94,17 +94,6 @@ function clean_backups() {
 
 function install_config() {
     FORCE=${1:-0}
-    while [ ${#} -gt 0 ]; do
-        case $1 in
-            -f | --force )
-                FORCE=1
-                break
-            ;;
-            * )
-                break
-            ;;
-        esac
-    done
 
     if [ ! -f "${USYSTEM_WORK_DIR}/etc/usystem.conf" ] || [ "${FORCE}" -eq 1 ]; then
         cp "${USYSTEM_WORK_DIR}/etc/default/usystem.conf" "${USYSTEM_WORK_DIR}/etc/usystem.conf"
@@ -202,7 +191,7 @@ function repair_permissions() {
 
 function repair() {
     MSG="Repairing"
-    echo "$1"
+    FORCE=0
     while [ ${#} -gt 0 ]; do
         case $1 in
             -h | --help | help )
@@ -210,10 +199,11 @@ function repair() {
             ;;
             --install | install )
                 MSG="Installing"
-                break
+                shift 1
             ;;
-            * )
-                break
+            -f | --force )
+                FORCE=1
+                shift 1
             ;;
         esac
     done
@@ -248,7 +238,7 @@ function repair() {
     fi
 
     printf "%-32s " "${MSG} config ..."
-    if install_config "$@"; then
+    if install_config "${FORCE}"; then
         install_config
         printf '[OK]\n'
     fi
@@ -312,10 +302,7 @@ function install() {
 
             -f | --force )
                 FORCE=1
-                break
-            ;;
-            * )
-                break
+                shift 1
             ;;
         esac
     done
@@ -403,8 +390,11 @@ function install() {
 
     # Directories are created now run repair with hidden parameter to
     # set the console message to 'Installing'
-    echo "$@" "$1"
-    repair "$@"
+    if [ "${FORCE}" -eq 1 ]; then
+        repair --install --force
+    else
+        repair --install
+    fi
 }
 
 function backup_help() {
@@ -420,9 +410,6 @@ function backup() {
         case $1 in
             -h | --help | help )
                 backup_help
-            ;;
-            * )
-                break
             ;;
         esac
     done
@@ -457,9 +444,6 @@ function upgrade() {
         case $1 in
             -h | --help | help )
                 upgrade_help
-            ;;
-            * )
-                break
             ;;
         esac
     done
