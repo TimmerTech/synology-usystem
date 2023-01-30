@@ -465,7 +465,6 @@ function upgrade() {
             ;;
         esac
     done
-    printf "%s\n" "$@"
 
     # Set umask
     umask 022
