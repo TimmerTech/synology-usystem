@@ -80,14 +80,8 @@ function create_directories() {
 
 function clean_logs() {
     printf "%-32s " "Cleaning logs ..."
-    if rm -rf "${USYSTEM_WORK_DIR}/logs/*"; then
-        printf '[OK]\n'
-        return 1
-    else
-        printf '[FAILED]\n'
-    fi
-
-    return 0
+    rm -rf "${USYSTEM_WORK_DIR}/logs/*"
+    printf '[OK]\n'
 }
 
 function clean_backups() {
@@ -96,14 +90,8 @@ function clean_backups() {
 
     printf "%-32s " "Cleaning backups ..."
     # shellcheck disable=SC2010
-    if ls -tp "${USYSTEM_ROOT_DIR}/backup/" | grep -v '/$' | tail -n +$((1 + BACKUP_KEEP_LAST)) | xargs -I {} rm -- {}; then
-        printf '[OK]\n'
-        return 1
-    else
-        printf '[FAILED]\n'
-    fi
-
-    return 0
+    ls -tp "${USYSTEM_ROOT_DIR}/backup/" | grep -v '/$' | tail -n +$((1 + BACKUP_KEEP_LAST)) | xargs -I {} rm -- {}
+    printf '[OK]\n'
 }
 
 function install_config() {
@@ -153,26 +141,18 @@ function clean() {
             ;;
 
             -a | --all )
-                if ! clean_backups; then
-                    exit 1
-                fi
-                if ! clean_logs; then
-                    exit 1
-                fi
+                clean_backups
+                clean_logs
                 exit 0
             ;;
 
             -b | --backups )
-                if ! clean_backups; then
-                    exit 1
-                fi
+                clean_backups
                 exit 0
             ;;
 
             -l | --logs )
-                if ! clean_logs; then
-                    exit 1
-                fi
+                clean_logs
                 exit 0
             ;;
         esac
