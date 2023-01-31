@@ -14,7 +14,6 @@ set -o pipefail # exit on pipe failure
 ################################################################################
 declare -r CLI_VERSION='1.0.0';
 declare -r CLI_NAME='usystem';
-declare -r PS4='debug($LINENO) ${FUNCNAME[0]:+${FUNCNAME[0]}}(): ';
 declare -r USYSTEM_ROOT_DIR=/volume1/@usystem;
 declare -r USYSTEM_WORK_DIR=${USYSTEM_ROOT_DIR}/usystem;
 declare -r USYSTEM_ARCHIVE=${USYSTEM_ROOT_DIR}/usystem.tar.gz
