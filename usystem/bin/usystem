@@ -64,14 +64,24 @@
 #%    This will install the Synology User System
 #%
 #% OPTIONS
-#%    -f, --force           Forced install, will override any safety measure [FORCE]
+#%    -f, --force           Forced install, will override any safety measure.
+#%                          A forced install will only create the config if not
+#%                          present. [FORCE]
+#%        --force-config    Override config with new config, without this option
+#%                          a forced install will keep a previous config intact. [FORCE_CONFIG]
 #%    -v, --volume          Set volume to install to; (default /volume1) [USYS_VOLUME]
 #%    -t, --target-dir      Set target installation directory (default USYS_VOLUME/@usystem) [USYS_TARGET]
 #%    -r, --root-dir        Set root directory (default USYS_TARGET/usystem) [USYS_ROOT]
 #%    -b, --backup-dir      Set backup directory (default USYS_TARGET/backup) [USYS_BACKUP_DIR]
 #%    -c, --config-dir      Set config directory (default USYS_ROOT/etc) [USYS_CONFIG_DIR]
-#%    -l, --log-dir         Set log direcotory (default USYS_ROOT/log) [USYS_LOG_DIR]
+#%        --log-dir         Set log direcotory (default USYS_ROOT/log) [USYS_LOG_DIR]
+#%        --local FILE      Install from locally download file.
+#%                          If not provided usystem will be downloaded from repository.
+#%                          This option will not be presisted to usystem.conf after install.
+#%                          (default USYS_ROOT/usystem.tgz) [USYS_REPO_ARCHIVE]
 #%
+#% HELP
+#%    Options can be provided by environment variables defined within brackets [].
 #%
 #===============================================================================
 # INSTALL_END
@@ -99,11 +109,15 @@ declare -r CLI_NAME=$(basename "${0}");
 # shellcheck disable=SC2034
 declare -r CLI_VERSION=1.0.0;
 # shellcheck disable=SC2034
-declare -r CLI_DIR="$( cd "$(dirname "$0")" && pwd )"
+declare -r CLI_DIR="$( cd "$(dirname "$0")" && pwd )";
 
 # Logging
-declare -A LOG_LEVELS=([NONE]=0 [DEBUG]=1 [WARN]=2 [ERROR]=3)
-declare LOG_LEVEL="${LOG_LEVEL:-INFO}"
+#
+# Please note that the log level NONE does not mean 'No Logging'
+# NONE is used for output without a log level
+declare -rA LOG_LEVELS=([NONE]=0 [DEBUG]=1 [INFO]=2 [WARN]=3 [ERROR]=4);
+declare LOG_LEVEL="${LOG_LEVEL:-INFO}";
+declare -r LOG_PFX='%-32s '
 
 # User System VARS
 declare USYS_VOLUME="${USYS_VOLUME:-/volume1}";
@@ -113,6 +127,7 @@ declare USYS_BACKUP_DIR="${USYS_BACKUP_DIR:-${USYS_TARGET}/backup}";
 declare USYS_CONFIG_DIR="${USYS_CONFIG_DIR:-${USYS_ROOT}/etc}";
 declare USYS_LOG_DIR="${USYS_LOG_DIR:-${USYS_ROOT}/log}";
 declare -r USYS_TMP_DIR="${USYS_TMP_DIR:-${USYS_ROOT}/tmp}";
+declare -r USYS_CONFIG="${USYS_CONFIG:-${USYS_CONFIG_DIR}/usystem.conf}"
 
 # User System Repository
 declare -r USYS_REPO_URL="${USYS_REPO_URL:-https://github.com/TimmerTech/synology-usystem}";
@@ -212,14 +227,236 @@ function log() {
     # Check if log level exists
     [[ ${LOG_LEVELS[${LVL}]} ]] || return 1
 
-    # Check is current log level is
-    if (( LVL == 0 )); then
+    # If log level is NONE; we output the message raw
+    if (( ${LOG_LEVELS[${LVL}]} == 0 )) && [ -n "${MSG}" ]; then
         echo "${MSG}"
+        return 0
     fi
 
-    (( ${LOG_LEVELS[${LVL}]} < ${LOG_LEVELS[${LOG_LEVEL}]} )) && return 2
+    # Check is current log level is allowed
+    (( ${LOG_LEVELS[${LVL}]} <= ${LOG_LEVELS[${LOG_LEVEL}]} )) && return 2
 
-    printf '%-6s %s\n' "${LVL} " "${MSG}"
+    if [ -n "${MSG}" ]; then
+        printf '%-5s: %s\n' "${LVL}" "${MSG}"
+    fi
+}
+
+function fecho() {
+    local -r MSG="${1}"
+
+    # shellcheck disable=SC2059
+    printf "${LOG_PFX}" "${MSG}"
+}
+
+function fresult() {
+    local -r RES="${1}"
+    local -r LVL="${2:-NONE}"
+    local -r MSG="${3:-""}"
+
+    printf '[%s]\n' "${RES}"
+    log "${LVL}" "${MSG}"
+}
+
+# shellcheck disable=SC2120
+function ok() {
+    local -r LVL="${1:-NONE}"
+    local -r MSG="${2:-""}"
+
+    fresult OK "${LVL}" "${MSG}"
+}
+
+# shellcheck disable=SC2120
+function fail() {
+    local -r LVL="${1:-NONE}"
+    local -r MSG="${2:-""}"
+
+    fresult FAILED "${LVL}" "${MSG}"
+}
+
+function umount() {
+    # unmount /usys/tmp
+    if grep ' /usys/tmp ' /proc/mounts > /dev/null 2>&1; then
+        fecho "umounting usystem:tmp ..."
+        if umount /usys/tmp; then
+            ok
+        else
+            fail ERROR "Failed to umount, manual install required" && exit 1
+        fi
+    fi
+
+    # umount /usys
+    if grep ' /usys ' /proc/mounts > /dev/null 2>&1; then
+        fecho "unmounting usystem ..."
+        if umount /usys; then
+            ok
+        else
+            fail ERROR "Failed to umount, manual install required" && exit 1
+        fi
+    fi
+}
+
+# Create directories, not every directory of usystem is stored in the
+# repository. Therefor create all required directories.
+function create_directories() {
+    # Directories
+    local -ra DIRECTORIES=(
+        etc/certs
+        etc/nginx/conf.d
+        etc/nginx/sites.enabled
+        log
+        reports
+        sbin
+    )
+
+    for DIR in "${DIRECTORIES[@]}"; do
+        if [ ! -d "${USYS_ROOT}/${DIR}" ]; then
+            mkdir -p "${USYS_ROOT}/${DIR}" || return 1
+        fi
+    done
+
+    return 0
+}
+
+function fix_permissions() {
+    local -ra PERMISSIONS=(
+        ["${USYS_ROOT}/bin"]="775@root:administrator"
+        ["${USYS_ROOT}/etc"]="775@root:administrator"
+        ["${USYS_ROOT}/log"]="775@root:administrator"
+        ["${USYS_ROOT}/sbin"]="755@root:administrator"
+    )
+
+    for P in "${!PERMISSIONS[@]}"; do
+        PATH="${P}"
+        PERM=("${PERMISSIONS[${P}]//@/ }")
+        CHMOD=${PERM[0]}
+        CHOWN=${PERM[1]}
+
+        chmod -Rv "${CHMOD}" "${PATH}" || return 1
+        chown -Rv "${CHOWN}" "${PATH}" || return 1
+    done
+
+    return 0
+}
+
+function download() {
+    local -r LOG="${USYS_TARGET}/usystem.download.${CLI_EXEC_DT}.log"
+
+    # Set umask
+    umask 022
+
+    fecho "Downloading usystem ..."
+    if wget -L "${USYSTEM_REPO_URL}/archive/main.tar.gz" -O "${USYS_REPO_ARCHIVE}" -o "${LOG}" > /dev/null 2>&1; then
+        ok
+    else
+        fail ERROR "Failed to download usystem; see log: ${LOG}" && exit 1
+    fi
+}
+
+function install_archive() {
+    local LOG="${USYS_TARGET}/usystem.install.${CLI_EXEC_DT}.log"
+    local -r FORCE="${1}"
+    local -r FORCE_CONFIG="${2}"
+
+    # Set umask
+    umask 022
+
+    # Remove USYS_TARGET/install before installing, this directory might be
+    # present due to install failure
+    if [ -d "${USYS_TARGET}/install" ]; then
+        rm -rf "${USYS_TARGET}/install"
+    fi
+
+    # Create temporary install directory
+    mkdir -d "${USYS_TARGET}/install"
+
+    fecho "Installing ..."
+    # Extract archive to USYS_TARGET/install, we are installing to this temporary directory
+    # because the user might have choosen to override the default of USYS_ROOT
+    # therefor we must create the USYS_ROOT and move the entire usystem here.
+    if tar -xvf "${USYS_REPO_ARCHIVE}" --strip-components=1 -C "${USYS_TARGET}/install" > "${LOG}" 2>&1; then
+
+        # Create USYS_ROOT
+        if [ ! -d "${USYS_ROOT}" ]; then
+            mkdir -d "${USYS_ROOT}"
+        fi
+
+        # Now copy the usystem to the its final destination
+        if mv -v "${USYS_TARGET}/install/usystem" "${USYS_ROOT}" >> "${LOG}"; then
+            fail ERROR "Failed to move usystem; see log: ${LOG}" && exit 1
+        fi
+
+        # Copy LICENSE to USYS_TARGET
+        if mv -v "${USYS_TARGET}/install/LICENSE" "${USYS_TARGET}/LICENSE" >> "${LOG}"; then
+            fail ERROR "Failed to move LICENSE; see log: ${LOG}" && exit 1
+        fi
+
+        # Remove install folder, to make sure we cleanup after ourselfs
+        rm -rf "${USYS_TARGET}/install"
+
+        # Fix permissions of file/folders
+        if ! fix_permissions; then
+            fail ERROR "Failed to repair permissions"
+        fi
+
+        # Install OK
+        ok
+    fi
+}
+
+# install_config
+#
+# Because we are calling this from the 'install' and 'repair' command
+# we want to be able to show the correct message to the user
+# therefor this function accepts a MSG as a parameter for this usecase
+function install_config() {
+    local -r FORCE_CONFIG="${1}"
+    local -r MSG="${2}"
+
+    if [ ! -f "${USYS_CONFIG}" ] || [ "${FORCE_CONFIG}" ]; then
+        fecho "${MSG} config ..."
+        if cp "${USYS_CONFIG_DIR}/default/usystem.conf" "${USYS_CONFIG}"; then
+            # Config file copied to default location
+            # Now fill it with the install variables
+            read -r -d '' INSTALL_VARS <<EOF
+USYS_VOLUME=${USYS_VOLUME}
+USYS_TARGET=${USYS_TARGET}
+USYS_ROOT=${USYS_ROOT}
+USYS_BACKUP_DIR=${USYS_BACKUP_DIR}
+USYS_CONFIG_DIR=${USYS_CONFIG_DIR}
+USYS_LOG_DIR=${USYS_LOG_DIR}
+EOF
+
+            # Write Install Variables to config
+            sed -i "s|%INSTALL_VARS%|${INSTALL_VARS}" "${USYS_CONFIG}"
+
+            ok
+        else
+            fail ERROR "Failed to install config"
+        fi
+    fi
+}
+
+# install_rc
+#
+# Because we are calling this from the 'install' and 'repair' command
+# we want to be able to show the correct message to the user
+# therefor this function accepts a MSG as a parameter for this usecase
+function install_rc() {
+    local -r MSG="${1}"
+
+    fecho "${MSG} rc.usystem ..."
+    if cp "${USYS_CONFIG_DIR}/default/rc.usystem" /etc; then
+        ok
+    else
+        fail ERROR "Failed to install rc.usystem" && exit 1
+    fi
+
+    fecho "${MSG} rc.local ..."
+    if cp "${USYS_CONFIG_DIR}/default/rc.local" /etc; then
+        ok
+    else
+        fail ERROR "Failed to install rc.local" && exit 1
+    fi
 }
 
 
@@ -229,6 +466,8 @@ function log() {
 function install() {
     # Install Variables
     local FORCE=0
+    local FORCE_CONFIG=0
+    local LOCAL_INSTALL=0
 
     # Parse Install Options
     while [ ${#} -gt 0 ]; do
@@ -237,13 +476,21 @@ function install() {
                 scriptinfo 0 install
             ;;
 
-            -f | --force)       FORCE=1;                readonly FORCE;             shift 1 ;;
-            -v | --volume)      USYS_VOLUME="${1}";     readonly USYS_VOLUME;       shift 1 ;;
-            -t | --target-dir)  USYS_TARGET="${1}";     readonly USYS_TARGET;       shift 1 ;;
-            -r | --root-dir)    USYS_ROOT="${1}";       readonly USYS_ROOT;         shift 1 ;;
-            -b | --backup-dir)  USYS_BACKUP_DIR="${1}"; readonly USYS_BACKUP_DIR;   shift 1 ;;
-            -c | --config-dir)  USYS_CONFIG_DIR="${1}"; readonly USYS_CONFIG_DIR;   shift 1 ;;
-            -l | --log-dir)     USYS_LOG_DIR="${1}";    readonly USYS_LOG_DIR;      shift 1 ;;
+            -f | --force)       FORCE=1;                    readonly FORCE;             shift 1 ;;
+            -v | --volume)      USYS_VOLUME="${1}";         readonly USYS_VOLUME;       shift 1 ;;
+            -t | --target-dir)  USYS_TARGET="${1}";         readonly USYS_TARGET;       shift 1 ;;
+            -r | --root-dir)    USYS_ROOT="${1}";           readonly USYS_ROOT;         shift 1 ;;
+            -b | --backup-dir)  USYS_BACKUP_DIR="${1}";     readonly USYS_BACKUP_DIR;   shift 1 ;;
+            -c | --config-dir)  USYS_CONFIG_DIR="${1}";     readonly USYS_CONFIG_DIR;   shift 1 ;;
+
+            --log-dir)          USYS_LOG_DIR="${1}";        readonly USYS_LOG_DIR;      shift 1 ;;
+            --force-config)     FORCE_CONFIG=1;             readonly FORCE_CONFIG;      shift 1 ;;
+            --local)
+                    LOCAL_INSTALL=1
+                    USYS_REPO_ARCHIVE="${2}"
+                    readonly USYS_REPO_ARCHIVE
+                    shift 2
+            ;;
 
             * )
                 printf "unknown option: '%s'\n" "${1}"
@@ -256,8 +503,113 @@ function install() {
     is_root "${FUNCNAME[0]}"
 
     # Verify the volume path exists
-    #exists "${USYS_VOLUME}" || ( printf "Volume: '%s' does not exists\n" "${USYS_VOLUME}" && exit 1 )
     exists "${USYS_VOLUME}" || ( log ERROR "Volume: '${USYS_VOLUME}' does not exists" && exit 1 )
+
+    # Create targer directory on volume
+    if [ ! -d "${USYS_TARGET}" ]; then
+        mkdir -p "${USYS_TARGET}"
+    fi
+
+    # Verify that the root directory does not exist
+    # If it exists, inform the user to use the 'upgrade' command
+    # This check can be overridden with '--force'
+    if [ -d "${USYS_ROOT}" ] && [ ! "${FORCE}" ]; then
+        log ERROR "${USYS_ROOT} exist; please use '${CLI_NAME} upgrade'"
+        exit 1
+    fi
+
+    # Because we have the option '--force' to perform a forced install
+    # we must unmount the usystem if it exists.
+    umount
+
+    # Check if we are performing a local install
+    # if not then remove possible present downloaded archive
+    if [ ! "${LOCAL_INSTALL}" ]; then
+        rm -f "${USYS_REPO_ARCHIVE}"
+
+        # set download log; because we might never be installed, write the
+        # download log to USYS_TARGET
+        download
+    fi
+
+    # Install archive, either downloaded or local
+    install_archive "${FORCE}" "${FORCE_CONFIG}"
+
+    # Create directories
+    fecho "Creating directories ..."
+    if create_directories; then
+        ok
+    else
+        fail ERROR: "Failed to create directories" && exit 1
+    fi
+
+    # Install config
+    install_config "${FORCE_CONFIG}" "Installing"
+
+    # Install run commands
+    install_rc "Installing"
+
+    # Start usystem
+    # We are going to start the user system from rc.local
+    # The reason we are starting from rc.local is that rc.local after it starts
+    # starts all user configured rc.d/* because we might be performing a forced
+    # install and overwrite an existing installation
+    /etc/rc.local
+}
+
+function repair() {
+    local FORCE_CONFIG=0
+
+    # Parse Install Options
+    while [ ${#} -gt 0 ]; do
+        case $1 in
+            -h | --help | help)
+                scriptinfo 0 repair
+            ;;
+
+            --force-config)
+                FORCE_CONFIG=1;
+                readonly FORCE_CONFIG;
+                shift 1
+            ;;
+
+            * )
+                printf "unknown option: '%s'\n" "${1}"
+                scriptinfo 1 install
+            ;;
+        esac
+    done
+
+    # Check if we are running as root
+    is_root "${FUNCNAME[0]}"
+
+    # Fix permissions
+    fecho "Repairing permissions ..."
+    if fix_permissions; then
+        ok
+    else
+        fail ERROR "Failed to repair permissions" && exit 1
+    fi
+
+    # Install config
+    install_config "${FORCE_CONFIG}" "Repairing"
+
+    # Install run commands
+    install_rc "Reparing"
+
+    # Start usystem
+    # We are going to start the user system from rc.local
+    # The reason we are starting from rc.local is that rc.local after it starts
+    # starts all user configured rc.d/* because we might be performing a forced
+    # install and overwrite an existing installation
+    /etc/rc.local
+
+    # Link resources
+    link "$@"
+}
+
+function link() {
+    :
 }
 
 #===============================================================================
