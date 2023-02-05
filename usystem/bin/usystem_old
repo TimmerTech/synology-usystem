@@ -1,0 +1,670 @@
+#!/usr/bin/env bash
+
+# bash strict mode
+set -T # inherit DEBUG and RETURN trap for functions
+set -C # prevent file overwrite by > &> <>
+set -E # inherit -e
+set -e # exit immediately on errors
+set -u # exit on not assigned variables
+set -o pipefail # exit on pipe failure
+
+
+################################################################################
+# global variable
+################################################################################
+declare -r CLI_VERSION='1.0.0';
+declare -r CLI_NAME='usystem';
+declare -r USYSTEM_ROOT_DIR=/volume1/@usystem;
+declare -r USYSTEM_WORK_DIR=${USYSTEM_ROOT_DIR}/usystem;
+declare -r USYSTEM_ARCHIVE=${USYSTEM_ROOT_DIR}/usystem.tar.gz
+declare -r USYSTEM_REPO_URL="https://github.com/TimmerTech/synology-usystem"
+
+CLI_EXEC_DATE="$(date +'%Y%m%d-%H%M%S')";
+readonly CLI_EXEC_DATE
+
+declare -r BACKUP_ARCHIVE="${USYSTEM_ROOT_DIR}/backup/usystem.backup.${CLI_EXEC_DATE}.tar.gz"
+
+
+################################################################################
+# functions
+################################################################################
+function _download() {
+    local LOG_LOCATION="${1}"
+
+    umask 022
+    if wget -L "${USYSTEM_REPO_URL}/archive/main.tar.gz" -O "${USYSTEM_ARCHIVE}" -o "${LOG_LOCATION}" > /dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+function remove_usystem_archive() {
+    if [ -f "${USYSTEM_ARCHIVE}" ]; then
+        rm -f "${USYSTEM_ARCHIVE}"
+    fi
+}
+
+function remove_git() {
+    # Remove .git directory
+    if [ -d "${USYSTEM_ROOT_DIR}/.git" ]; then
+        rm -rf "${USYSTEM_ROOT_DIR}/.git"
+    fi
+    if [ -f "${USYSTEM_ROOT_DIR}/.gitignore" ]; then
+        rm "${USYSTEM_ROOT_DIR}/.gitignore"
+    fi
+    if [ -f "${USYSTEM_ROOT_DIR}/.shellcheckrc" ]; then
+        rm "${USYSTEM_ROOT_DIR}/.shellcheckrc"
+    fi
+}
+
+function create_directories() {
+    # Create directories
+    declare -ra DIRECTORIES=(
+        etc/certs
+        etc/nginx/conf.d
+        etc/nginx/sites.enabled
+        log
+        reports
+        sbin
+    )
+
+    for DIR in "${DIRECTORIES[@]}"; do
+        if [ ! -d "${USYSTEM_WORK_DIR}/${DIR}" ]; then
+            mkdir -p "${USYSTEM_WORK_DIR}/${DIR}" || return 1
+        fi
+    done
+
+    return 0
+}
+
+function clean_logs() {
+    printf "%-32s " "Cleaning logs ..."
+    rm -rf "${USYSTEM_WORK_DIR}"/log/*
+    printf '[OK]\n'
+}
+
+function clean_backups() {
+    # shellcheck source=../etc/default/usystem.conf
+    source "${USYSTEM_WORK_DIR}/etc/usystem.conf"
+
+    printf "%-32s " "Cleaning backups ..."
+    # shellcheck disable=SC2010
+    ls -tp "${USYSTEM_ROOT_DIR}/backup/" | grep -v '/$' | tail -n "+$((1 + BACKUP_KEEP_LAST))" | xargs -I {} rm -- {}
+    printf '[OK]\n'
+}
+
+function install_config() {
+    FORCE=${1:-0}
+    MSG=${2}
+
+    if [ ! -f "${USYSTEM_WORK_DIR}/etc/usystem.conf" ] || [ "${FORCE}" -eq 1 ]; then
+        printf "%-32s " "${MSG} config ..."
+        if cp "${USYSTEM_WORK_DIR}/etc/default/usystem.conf" "${USYSTEM_WORK_DIR}/etc/usystem.conf"; then
+            printf '[OK]\n'
+        else
+            printf '[FAILED]\n'
+        fi
+    fi
+
+    return 0
+}
+
+function link_nginx_confd() {
+    for LINK in "${USYSTEM_WORK_DIR}"/etc/nginx/conf.d/*; do
+        LNBASE="$(basename "${LINK}")"
+        LNLOG="${USYSTEM_WORK_DIR}/log/${LNBASE}.log"
+
+        # Check if the target file is an actual file
+        # if its a real file then we are not going to do anything
+        printf "%-32s " "Cleaning backups ..."
+        if [ ! -f "/etc/nginx/conf.d/${LNBASE}" ] && [ ! -L "/etc/nginx/conf.d/${LNBASE}" ]; then
+            if ln -s "$(readlink -f "${LINK}")" "/etc/nginx/conf.d/${LNBASE}"; then
+                if nginx -t > "${LNLOG}" 2>&1; then
+                    printf '[OK]\n'
+                else
+                    printf '[FAILED]: Syntax Error; see log %s\n' "${LNLOG}"
+                fi
+            else
+                printf '[FAILED]\n'
+                echo "ERROR: Unable to create link"
+            fi
+        else
+            printf "[SKIPPED]: /etc/nginx/conf.d/%s: exists as file" "${LNBASE}\n"
+        fi
+    done
+}
+
+
+################################################################################
+# commands
+################################################################################
+function clean_help() {
+    echo $CLI_NAME clean
+    echo
+    echo Description:
+    printf "%-4s%s\n" "" "Clean usystem"
+    printf "%-4s%s\n" "" "This will cleanup usystem, see usystem.conf for configuration"
+    echo
+    echo Options:
+    printf "%-4s%-23s %s\n" "" "-a, --all" "Cleanup all";
+    printf "%-4s%-23s %s\n" "" "-b, --backups" "Remove old backups";
+    printf "%-4s%-23s %s\n" "" "-l, --logs" "Remove old logs";
+    exit 0
+}
+
+function clean() {
+    if [[ $(/usr/bin/id -u) -ne 0 ]]; then
+        echo "'usystem repair' must be run as root"
+        exit 1
+    fi
+
+    while [ ${#} -gt 0 ]; do
+        case $1 in
+            -h | --help | help )
+                clean_help
+            ;;
+
+            -a | --all )
+                clean_backups
+                clean_logs
+                exit 0
+            ;;
+
+            -b | --backups )
+                clean_backups
+                exit 0
+            ;;
+
+            -l | --logs )
+                clean_logs
+                exit 0
+            ;;
+        esac
+    done
+
+    clean_help
+}
+
+function repair_help() {
+    echo $CLI_NAME repair
+    echo
+    echo Description:
+    printf "%-4s%s\n" "" "Repair usystem, used after DSM upgrade or update."
+    printf "%-4s%s\n" "" "This will mount and relink usystem to your Synology"
+    echo
+    echo Options:
+    printf "%-4s%-23s %s\n" "" "--force-config" "Override config";
+    exit 0
+}
+
+function repair_permissions() {
+    if ! chmod -R 775 "${USYSTEM_WORK_DIR}"/bin; then
+        return 1
+    fi
+    if ! chmod -R 775 "${USYSTEM_WORK_DIR}"/etc; then
+        return 1
+    fi
+    if ! chmod -R 700 "${USYSTEM_WORK_DIR}"/sbin; then
+        return 1
+    fi
+    if ! chmod -R 775 "${USYSTEM_WORK_DIR}/log"; then
+        return 1
+    fi
+
+    if ! chown -R root:administrators "${USYSTEM_WORK_DIR}"/bin; then
+        return 1
+    fi
+    if ! chown -R root:administrators "${USYSTEM_WORK_DIR}"/etc; then
+        return 1
+    fi
+    if ! chown -R root:administrators "${USYSTEM_WORK_DIR}"/log; then
+        return 1
+    fi
+
+    return 0
+}
+
+function repair() {
+    MSG="Repairing"
+    MSG_CONFIG=${MSG}
+    FORCE_CONFIG=0
+    while [ ${#} -gt 0 ]; do
+        case $1 in
+            -h | --help | help )
+                repair_help
+            ;;
+            --install | install )
+                MSG="Installing"
+                shift 1
+            ;;
+            -f | --force-config )
+                MSG_CONFIG="Override"
+                FORCE_CONFIG=1
+                shift 1
+            ;;
+        esac
+    done
+
+    if [[ $(/usr/bin/id -u) -ne 0 ]]; then
+        echo "'usystem repair' must be run as root"
+        exit 1
+    fi
+
+    printf "%-32s " "${MSG} rc.usystem ..."
+    if cp "${USYSTEM_WORK_DIR}/etc/rc.usystem" /etc; then
+        printf '[OK]\n'
+    else
+        printf '[FAILED]\n'
+        exit 1
+    fi
+
+    printf "%-32s " "${MSG} rc.local ..."
+    if cp "${USYSTEM_WORK_DIR}/etc/rc.local" /etc; then
+        printf '[OK]\n'
+    else
+        printf '[FAILED]\n'
+        exit 1
+    fi
+
+    printf "%-32s " "Fixing permissions ..."
+    if repair_permissions; then
+        printf '[OK]\n'
+    else
+        printf '[FAILED]\n'
+        exit 1
+    fi
+
+    # Install/Override Config
+    install_config "${FORCE_CONFIG}" "${MSG_CONFIG}"
+
+    # Make sure to start usystem
+    "${USYSTEM_WORK_DIR}/etc/rc.usystem" start
+
+    # Repair completed, now link/re-link all usystem resources back to the OS
+    # This will a user to only issue the repair command after a DSM upgrade to
+    # completely restore everything
+    #
+    # Link usystem resources to OS
+    link "$@"
+
+    exit 0;
+}
+
+function link_help() {
+    echo $CLI_NAME link
+    echo
+    echo Description:
+    printf "%-4s%s\n" "" "Link usystem"
+    printf "%-4s%s\n" "" "This will link resources from usystem to the OS."
+    exit 0
+}
+
+function link() {
+    while [ ${#} -gt 0 ]; do
+        case $1 in
+            -h | --help | help )
+                link_help
+            ;;
+            * )
+                break
+            ;;
+        esac
+    done
+
+    if [[ $(/usr/bin/id -u) -ne 0 ]]; then
+        echo "'usystem link' must be run as root"
+        exit 1
+    fi
+
+    # nginx
+
+}
+
+function install_help() {
+    echo $CLI_NAME install
+    echo
+    echo Description:
+    printf "%-4s%s\n" "" "Install usystem"
+    printf "%-4s%s\n" "" "This will install, mount and link usystem to your Synology"
+    echo
+    echo Options:
+    printf "%-4s%-23s %s\n" "" "-f, --force" "Force install";
+    printf "%-4s%-23s %s\n" "" "--force-config" "Override config";
+    exit 0
+}
+
+function install() {
+    FORCE=0
+    FORCE_CONFIG=0
+    while [ ${#} -gt 0 ]; do
+        case $1 in
+            -h | --help | help )
+                install_help
+            ;;
+
+            -f | --force )
+                FORCE=1
+                shift 1
+            ;;
+            --force-config )
+                FORCE_CONFIG=1
+                shift 1
+            ;;
+        esac
+    done
+
+    if [[ $(/usr/bin/id -u) -ne 0 ]]; then
+        echo "'usystem install' must be run as root"
+        exit 1
+    fi
+
+    # Create usystem root directory
+    if [ ! -d "${USYSTEM_ROOT_DIR}" ]; then
+        mkdir -p "${USYSTEM_ROOT_DIR}"
+    fi
+
+    if [ -d "${USYSTEM_WORK_DIR}" ] && [ "${FORCE}" -eq 0 ]; then
+        echo "${USYSTEM_WORK_DIR} already exists; please use 'usystem upgrade'"
+        exit 1
+    fi
+
+    printf "%-32s " "unmounting usystem tmp ..."
+    if grep ' /usys/tmp ' /proc/mounts > /dev/null 2>&1; then
+        if umount /usys/tmp; then
+            printf '[OK]\n'
+        else
+            printf '[FAILED]\n'
+            echo "ERROR: Failed to umount, manual install required"
+            exit 1
+        fi
+    else
+        printf '[OK]\n'
+    fi
+
+    printf "%-32s " "unmounting usystem ..."
+    if grep ' /usys ' /proc/mounts > /dev/null 2>&1; then
+        if umount /usys; then
+            printf '[OK]\n'
+        else
+            printf '[FAILED]\n'
+            echo "ERROR: Failed to umount, manual install required"
+            exit 1
+        fi
+    else
+        printf '[OK]\n'
+    fi
+
+    remove_usystem_archive
+
+    printf "%-32s " "Downloading usystem ..."
+    DOWNLOAD_LOG="${USYSTEM_ROOT_DIR}/usystem.download.${CLI_EXEC_DATE}.log"
+    if _download "${DOWNLOAD_LOG}"; then
+        printf '[OK]\n'
+
+        # Everything went OK; delete download log
+        rm "${DOWNLOAD_LOG}"
+    else
+        printf '[FAILED]\n'
+        echo "ERROR: Failed to download; see log: ${DOWNLOAD_LOG}"
+        exit 1
+    fi
+
+    printf "%-32s " "Installing ..."
+    EXTRACT_LOG="${USYSTEM_ROOT_DIR}/usystem.install.${CLI_EXEC_DATE}.log"
+    if tar -xvf "${USYSTEM_ARCHIVE}" --strip-components=1 -C "${USYSTEM_ROOT_DIR}" > "${EXTRACT_LOG}" 2>&1; then
+        printf '[OK]\n'
+
+        # Everything went ok; delete install log, and downloaded archive
+        rm "${EXTRACT_LOG}"
+        remove_usystem_archive
+        remove_git
+    else
+        printf '[FAILED]\n'
+        echo "ERROR: Failed to extract; see log: ${EXTRACT_LOG}"
+        exit 1
+    fi
+
+    # Create all directories
+    printf "%-32s " "Creating Directories ..."
+    if create_directories; then
+        printf '[OK]\n'
+    else
+        printf '[FAILED]\n'
+        echo "ERROR: Failed to create directories"
+        exit 1
+    fi
+
+    if [ "${FORCE_CONFIG}" -eq 1 ]; then
+        repair --install --force-config
+    else
+        repair --install
+    fi
+}
+
+function backup_help() {
+    echo $CLI_NAME backup
+    echo
+    echo Description:
+    printf "%-4s%s\n" "" "Create backup of usystem."
+    exit 0
+}
+
+function backup() {
+    while [ ${#} -gt 0 ]; do
+        case $1 in
+            -h | --help | help )
+                backup_help
+            ;;
+        esac
+    done
+
+    umask 022
+    rm -f "${USYSTEM_ROOT_DIR}"/usystem.tar.gz
+
+    if [ ! -d "${USYSTEM_ROOT_DIR}/backup" ]; then
+        mkdir -p "${USYSTEM_ROOT_DIR}/backup"
+    fi
+
+    printf "%-32s " "Creating backup ..."
+    if tar -czf "${BACKUP_ARCHIVE}" --exclude usystem/tmp -C "${USYSTEM_ROOT_DIR}" usystem/; then
+        printf '[OK]\n'
+    else
+        printf '[FAILED]\n'
+        echo "ERROR: Failed to create backup"
+        exit 1
+    fi
+}
+
+function upgrade_help() {
+    echo $CLI_NAME upgrade
+    echo
+    echo Description:
+    printf "%-4s%s\n" "" "Upgrade to latest version of usystem."
+    echo
+    echo Options:
+    printf "%-4s%-23s %s\n" "" "-f, --force" "Force upgrade";
+    printf "%-4s%-23s %s\n" "" "--force-config" "Override config";
+    exit 0
+}
+
+function upgrade() {
+    FORCE=0
+    FORCE_CONFIG=0
+    while [ ${#} -gt 0 ]; do
+        case $1 in
+            -h | --help | help )
+                upgrade_help
+            ;;
+            -f | --force )
+                FORCE=1
+                shift 1
+            ;;
+            --force-config )
+                FORCE_CONFIG=1
+                shift 1
+            ;;
+        esac
+    done
+
+    # Set umask
+    umask 022
+
+    if [[ $(/usr/bin/id -u) -ne 0 ]]; then
+        echo "usystem upgrade must be run as root"
+        exit 1
+    fi
+
+    # Create backup
+    backup "$@"
+
+    # Remove usystem.tar.gz if present
+    remove_usystem_archive
+
+    printf "%-32s " "Downloading upgrade ..."
+    DOWNLOAD_LOG="${USYSTEM_WORK_DIR}/log/usystem.download.${CLI_EXEC_DATE}.log"
+    if _download "${DOWNLOAD_LOG}"; then
+        printf '[OK]\n'
+
+        # Everything went OK; delete download log
+        rm "${DOWNLOAD_LOG}"
+    else
+        printf '[FAILED]\n'
+        echo "ERROR: Failed to download; see log: ${DOWNLOAD_LOG}"
+        exit 1
+    fi
+
+    # Perform upgrade
+    printf "%-32s " "Upgrading ..."
+    EXTRACT_LOG="${USYSTEM_WORK_DIR}/log/usystem.upgrade.${CLI_EXEC_DATE}.log"
+    if tar -xvf "${USYSTEM_ARCHIVE}" --strip-components=1 -C "${USYSTEM_ROOT_DIR}" > "${EXTRACT_LOG}" 2>&1; then
+        printf '[OK]\n'
+
+        # Everything went OK, remove log and archive
+        rm "${EXTRACT_LOG}"
+        remove_usystem_archive
+        remove_git
+    else
+        printf '[FAILED]\n'
+        echo "ERROR: Failed to extract; see log: ${EXTRACT_LOG}"
+
+        printf "%-32s " "unmounting usystem tmp ..."
+        if grep ' /usys/tmp ' /proc/mounts > /dev/null 2>&1; then
+            if umount /usys/tmp; then
+                printf '[OK]\n'
+            else
+                printf '[FAILED]\n'
+                echo "ERROR: Failed to umount, manual install required"
+                exit 1
+            fi
+        else
+            printf '[OK]\n'
+        fi
+
+        printf "%-32s " "unmounting usystem ..."
+        if grep ' /usys ' /proc/mounts > /dev/null 2>&1; then
+            if umount /usys; then
+                printf '[OK]\n'
+            else
+                printf '[FAILED]\n'
+                echo "ERROR: Failed to umount, manual restore required"
+                exit 1
+            fi
+        else
+            printf '[OK]\n'
+        fi
+
+        printf "%-32s " "Removing current ..."
+        if rm -rf "${USYSTEM_ROOT_DIR}/usystem"; then
+            printf '[OK]\n'
+        else
+            printf '[FAILED]\n'
+            echo "ERROR: Failed to remove current version, manual restore required"
+            exit 1
+        fi
+
+        RESTORE_LOG="${USYSTEM_ROOT_DIR}/usystem.restore.${CLI_EXEC_DATE}.log"
+        printf "%-32s " "Restoring from backup ..."
+        if tar -xvf "${BACKUP_ARCHIVE}" -C "${USYSTEM_ROOT_DIR}" > "${RESTORE_LOG}" 2>&1; then
+            printf '[OK]\n'
+
+            # Restore complete, removing log
+            rm "${REVERT_LOG}"
+        else
+            printf '[FAILED]\n'
+            echo "ERROR: Failed to restore backup ($), manual restore required"
+            echo "ERROR: See restore log: ${RESTORE_LOG}"
+            exit 1
+        fi
+
+        # Terminate Upgrade
+        exit 1
+    fi
+
+    # Create all directories
+    printf "%-32s " "Creating Directories ..."
+    if create_directories; then
+        printf '[OK]\n'
+    else
+        printf '[FAILED]\n'
+        echo "ERROR: Failed to create directories"
+        exit 1
+    fi
+
+    if [ "${FORCE_CONFIG}" -eq 1 ]; then
+        repair --force-config
+    else
+        repair
+    fi
+}
+
+function main_help() {
+    echo $CLI_NAME $CLI_VERSION
+    echo
+    echo Usage:
+    printf "%-4s%s\n" "" "$CLI_NAME command [options]"
+    printf "%-4s%s\n" "" "$CLI_NAME command help"
+    echo
+    echo Global:
+    printf "%-4s%-23s %s\n" "" "help" "show help";
+    printf "%-4s%-23s %s\n" "" "version" "show version";
+    echo
+    echo Commands:
+    printf "%-4s%-23s %s\n" "" "backup" "Backup usystem";
+    printf "%-4s%-23s %s\n" "" "install" "Install usystem";
+    printf "%-4s%-23s %s\n" "" "upgrade" "Upgrade usystem";
+    printf "%-4s%-23s %s\n" "" "repair" "Repair usystem";
+    printf "%-4s%-23s %s\n" "" "link" "Link usystem resources to OS";
+    printf "%-4s%-23s %s\n" "" "clean" "Clean usystem";
+
+    exit "${1:-0}";
+}
+
+function version() {
+    echo $CLI_NAME $CLI_VERSION;
+    exit 0
+}
+
+function main() {
+    if (( ${#} == 0 )); then
+        main_help 0;
+    fi
+
+    case ${1} in
+        help )
+            main_help 0;
+        ;;
+        version )
+            version
+        ;;
+        backup | install | upgrade | repair | link | clean )
+            $1 "${@:2}";
+        ;;
+        * )
+            echo "unknown command: $1";
+            main_help 1;
+        ;;
+    esac
+}
+
+main "$@";

@@ -1,6 +1,86 @@
 #!/usr/bin/env bash
+#shellcheck disable=SC2155
+# SC2155: Declare and assign separately to avoid masking return values
+#===============================================================================
+# IMPLEMENTATION
+#===============================================================================
+#% ${CLI_NAME}: Synology User System
+#%    version:        ${CLI_VERSION}
+#%    author:         G.J.R. Timmer (https://www.timmertech.io)
+#%    license:        MIT
+#%
+#% ENVIRONMENT
+#%    volume:         ${USYS_VOLUME}
+#%    target:         ${USYS_TARGET}
+#%    root:           ${USYS_ROOT}
+#%    backup:         ${USYS_BACKUP_DIR}
+#%    config          ${USYS_CONFIG_DIR}
+#%    log:            ${USYS_LOG_DIR}
+#%    tmp:            ${USYS_TMP_DIR}
+#%
+#% REPOSITORY
+#%    url:            ${USYS_REPO_URL}
+#%
+#===============================================================================
+# IMPLEMENTATION_END
+#===============================================================================
+# USAGE
+#===============================================================================
+#% SYNOPSIS
+#+    ${CLI_NAME} [OPTIONS] [COMMAND] [CMD_OPTIONS...]
+#%
+#% DESCRIPTION
+#%    Synology User System Control
+#%    This script allows you to control the Synology User System
+#%
+#% COMMANDS
+#%    backup            Backup user system
+#%    clean             Clean user system
+#%    install           Install Synology user system
+#%    link              Link user system resources to DSM
+#%    repair            Repair user system, used after DSM update/upgrade
+#%    upgrade           Upgrade user system to latest version
+#%    help              Show usage information
+#%    version           Show version and implementation information
+#%
+#% HELP
+#%    Providing -h, --help or help as parameter to a command will show the usage
+#%    information of a particular command.
+#%
+#% EXAMPLES
+#%    usystem repair
+#%    usystem link
+#%    usystem install
+#%
+#===============================================================================
+# USAGE_END
+#===============================================================================
+# INSTALL
+#===============================================================================
+#% SYNOPSIS
+#+    ${CLI_NAME} install [OPTIONS...]
+#%
+#% DESCRIPTION
+#%    This will install the Synology User System
+#%
+#% OPTIONS
+#%    -f, --force           Forced install, will override any safety measure [FORCE]
+#%    -v, --volume          Set volume to install to; (default /volume1) [USYS_VOLUME]
+#%    -t, --target-dir      Set target installation directory (default USYS_VOLUME/@usystem) [USYS_TARGET]
+#%    -r, --root-dir        Set root directory (default USYS_TARGET/usystem) [USYS_ROOT]
+#%    -b, --backup-dir      Set backup directory (default USYS_TARGET/backup) [USYS_BACKUP_DIR]
+#%    -c, --config-dir      Set config directory (default USYS_ROOT/etc) [USYS_CONFIG_DIR]
+#%    -l, --log-dir         Set log direcotory (default USYS_ROOT/log) [USYS_LOG_DIR]
+#%
+#%
+#===============================================================================
+# INSTALL_END
+#===============================================================================
 
-# bash strict mode
+
+#===============================================================================
+# SHELL CONFIG
+#===============================================================================
 set -T # inherit DEBUG and RETURN trap for functions
 set -C # prevent file overwrite by > &> <>
 set -E # inherit -e
@@ -8,632 +88,218 @@ set -e # exit immediately on errors
 set -u # exit on not assigned variables
 set -o pipefail # exit on pipe failure
 
-
-################################################################################
-# global variable
-################################################################################
-declare -r CLI_VERSION='1.0.0';
-declare -r CLI_NAME='usystem';
-declare -r USYSTEM_ROOT_DIR=/volume1/@usystem;
-declare -r USYSTEM_WORK_DIR=${USYSTEM_ROOT_DIR}/usystem;
-declare -r USYSTEM_ARCHIVE=${USYSTEM_ROOT_DIR}/usystem.tar.gz
-
-CLI_EXEC_DATE="$(date +'%Y%m%d-%H%M%S')";
-readonly CLI_EXEC_DATE
-
-declare -r BACKUP_ARCHIVE="${USYSTEM_ROOT_DIR}/backup/usystem.backup.${CLI_EXEC_DATE}.tar.gz"
+# Define script finish function
+trap 'finish' EXIT
 
 
-################################################################################
-# functions
-################################################################################
-function _download() {
-    local LOG_LOCATION="${1}"
+#===============================================================================
+# GLOBAL VARS
+#===============================================================================
+declare -r CLI_NAME=$(basename "${0}");
+# shellcheck disable=SC2034
+declare -r CLI_VERSION=1.0.0;
+# shellcheck disable=SC2034
+declare -r CLI_DIR="$( cd "$(dirname "$0")" && pwd )"
 
-    umask 022
-    if wget -L https://github.com/TimmerTech/synology-usystem/archive/main.tar.gz -O "${USYSTEM_ARCHIVE}" -o "${LOG_LOCATION}" > /dev/null 2>&1; then
+# Logging
+declare -A LOG_LEVELS=([NONE]=0 [DEBUG]=1 [WARN]=2 [ERROR]=3)
+declare LOG_LEVEL="${LOG_LEVEL:-INFO}"
+
+# User System VARS
+declare USYS_VOLUME="${USYS_VOLUME:-/volume1}";
+declare USYS_TARGET="${USYS_TARGET:-"${USYS_VOLUME}/@usystem"}";
+declare USYS_ROOT="${USYS_ROOT:-"${USYS_TARGET}/usystem"}";
+declare USYS_BACKUP_DIR="${USYS_BACKUP_DIR:-${USYS_TARGET}/backup}";
+declare USYS_CONFIG_DIR="${USYS_CONFIG_DIR:-${USYS_ROOT}/etc}";
+declare USYS_LOG_DIR="${USYS_LOG_DIR:-${USYS_ROOT}/log}";
+declare -r USYS_TMP_DIR="${USYS_TMP_DIR:-${USYS_ROOT}/tmp}";
+
+# User System Repository
+declare -r USYS_REPO_URL="${USYS_REPO_URL:-https://github.com/TimmerTech/synology-usystem}";
+declare -r USYS_REPO_ARCHIVE="${USYS_REPO_ARCHIVE:-${USYS_ROOT}/usystem.tgz}";
+
+# CLI Exec Date/Time
+declare -r CLI_EXEC_DT="$(date +'%Y%m%d-%H%M%S')";
+
+
+#===============================================================================
+# FUNCTIONS
+#===============================================================================
+function scriptinfo_part() {
+    local -r PART="${1}"
+    local -r FILTER="${2}"
+
+    sed -n "/${PART}/,/${PART}_END/p" "${0}" | grep -e "${FILTER}" | sed -e "s/${FILTER}//g"
+}
+
+function scriptinfo_replace_var() {
+    local -r VARNAME="${1}"
+
+    sed -e "s|\${${VARNAME}}|${!VARNAME}|g"
+}
+
+# scriptinfo
+#
+# Parameters
+#   (1) EXIT Code
+#   (2) Command to display info for, defaults to 'help'
+#   (3) short/full; display short or full info, defaults to 'full'
+function scriptinfo() {
+    # Parameters
+    local -r EXIT="${1:-0}"
+    local -r CMD="${2:-help}"
+    local -r DISPLAY="${3:-full}"
+
+    # Filter
+    local FILTER="^#[%+]";
+
+    # Configure Display by altering FILTER
+    case "${DISPLAY,,}" in
+        short ) FILTER="^#+"    ;;
+        full  ) FILTER="^#[%+]" ;;
+    esac
+
+    case "${CMD,,}" in
+        help | usage)
+            scriptinfo_part USAGE "${FILTER}" | scriptinfo_replace_var CLI_NAME
+        ;;
+
+        version | implementation)
+                scriptinfo_part IMPLEMENTATION "${FILTER}" |
+                scriptinfo_replace_var CLI_NAME |
+                scriptinfo_replace_var CLI_VERSION |
+                scriptinfo_replace_var USYS_VOLUME |
+                scriptinfo_replace_var USYS_TARGET |
+                scriptinfo_replace_var USYS_ROOT |
+                scriptinfo_replace_var USYS_BACKUP_DIR |
+                scriptinfo_replace_var USYS_CONFIG_DIR |
+                scriptinfo_replace_var USYS_LOG_DIR |
+                scriptinfo_replace_var USYS_TMP_DIR |
+                scriptinfo_replace_var USYS_REPO_URL
+        ;;
+
+        *)
+            scriptinfo_part "${CMD^^}" "${FILTER}" | scriptinfo_replace_var CLI_NAME
+        ;;
+    esac
+
+    exit "${EXIT:-0}"
+}
+
+function is_root() {
+    local -r CMD="${1}"
+
+    if [[ $(/usr/bin/id -u) -ne 0 ]]; then
+        printf "'${CLI_NAME} %s' must be run as root\n" "${CMD}"
+        exit 1
+    fi
+}
+
+function exists() {
+    local -r PATH="${1}"
+
+    if [ -e "${PATH}" ]; then
         return 0
     else
         return 1
     fi
 }
 
-function remove_usystem_archive() {
-    if [ -f "${USYSTEM_ARCHIVE}" ]; then
-        rm -f "${USYSTEM_ARCHIVE}"
-    fi
-}
+function log() {
+    local -r LVL="${1}"
+    local -r MSG="${2}"
 
-function remove_git() {
-    # Remove .git directory
-    if [ -d "${USYSTEM_ROOT_DIR}/.git" ]; then
-        rm -rf "${USYSTEM_ROOT_DIR}/.git"
-    fi
-    if [ -f "${USYSTEM_ROOT_DIR}/.gitignore" ]; then
-        rm "${USYSTEM_ROOT_DIR}/.gitignore"
-    fi
-    if [ -f "${USYSTEM_ROOT_DIR}/.shellcheckrc" ]; then
-        rm "${USYSTEM_ROOT_DIR}/.shellcheckrc"
-    fi
-}
+    # Check if log level exists
+    [[ ${LOG_LEVELS[${LVL}]} ]] || return 1
 
-function create_directories() {
-    # Create directories
-    declare -ra DIRECTORIES=(
-        etc/certs
-        etc/nginx/conf.d
-        etc/nginx/sites.enabled
-        log
-        reports
-        sbin
-    )
-
-    for DIR in "${DIRECTORIES[@]}"; do
-        if [ ! -d "${USYSTEM_WORK_DIR}/${DIR}" ]; then
-            mkdir -p "${USYSTEM_WORK_DIR}/${DIR}" || return 1
-        fi
-    done
-
-    return 0
-}
-
-function clean_logs() {
-    printf "%-32s " "Cleaning logs ..."
-    rm -rf "${USYSTEM_WORK_DIR}"/log/*
-    printf '[OK]\n'
-}
-
-function clean_backups() {
-    # shellcheck source=../etc/usystem.conf
-    source "${USYSTEM_WORK_DIR}/etc/usystem.conf"
-
-    printf "%-32s " "Cleaning backups ..."
-    # shellcheck disable=SC2010
-    ls -tp "${USYSTEM_ROOT_DIR}/backup/" | grep -v '/$' | tail -n "+$((1 + BACKUP_KEEP_LAST))" | xargs -I {} rm -- {}
-    printf '[OK]\n'
-}
-
-function install_config() {
-    FORCE=${1:-0}
-    MSG=${2}
-
-    if [ ! -f "${USYSTEM_WORK_DIR}/etc/usystem.conf" ] || [ "${FORCE}" -eq 1 ]; then
-        printf "%-32s " "${MSG} config ..."
-        if cp "${USYSTEM_WORK_DIR}/etc/default/usystem.conf" "${USYSTEM_WORK_DIR}/etc/usystem.conf"; then
-            printf '[OK]\n'
-        else
-            printf '[FAILED]\n'
-        fi
+    # Check is current log level is
+    if (( LVL == 0 )); then
+        echo "${MSG}"
     fi
 
-    return 0
+    (( ${LOG_LEVELS[${LVL}]} < ${LOG_LEVELS[${LOG_LEVEL}]} )) && return 2
+
+    printf '%-6s %s\n' "${LVL} " "${MSG}"
 }
 
 
-################################################################################
-# commands
-################################################################################
-function clean_help() {
-    echo $CLI_NAME clean
-    echo
-    echo Description:
-    printf "%-4s%s\n" "" "Clean usystem"
-    printf "%-4s%s\n" "" "This will cleanup usystem, see usystem.conf for configuration"
-    echo
-    echo Options:
-    printf "%-4s%-23s %s\n" "" "-a, --all" "Cleanup all";
-    printf "%-4s%-23s %s\n" "" "-b, --backups" "Remove old backups";
-    printf "%-4s%-23s %s\n" "" "-l, --logs" "Remove old logs";
-    exit 0
-}
-
-function clean() {
-    if [[ $(/usr/bin/id -u) -ne 0 ]]; then
-        echo "'usystem repair' must be run as root"
-        exit 1
-    fi
-
-    while [ ${#} -gt 0 ]; do
-        case $1 in
-            -h | --help | help )
-                clean_help
-            ;;
-
-            -a | --all )
-                clean_backups
-                clean_logs
-                exit 0
-            ;;
-
-            -b | --backups )
-                clean_backups
-                exit 0
-            ;;
-
-            -l | --logs )
-                clean_logs
-                exit 0
-            ;;
-        esac
-    done
-
-    clean_help
-}
-
-function repair_help() {
-    echo $CLI_NAME repair
-    echo
-    echo Description:
-    printf "%-4s%s\n" "" "Repair usystem, used after DSM upgrade or update."
-    printf "%-4s%s\n" "" "This will mount and relink usystem to your Synology"
-    echo
-    echo Options:
-    printf "%-4s%-23s %s\n" "" "--force-config" "Override config";
-    exit 0
-}
-
-function repair_permissions() {
-    if ! chmod -R 775 "${USYSTEM_WORK_DIR}"/bin; then
-        return 1
-    fi
-    if ! chmod -R 775 "${USYSTEM_WORK_DIR}"/etc; then
-        return 1
-    fi
-    if ! chmod -R 700 "${USYSTEM_WORK_DIR}"/sbin; then
-        return 1
-    fi
-    if ! chmod -R 775 "${USYSTEM_WORK_DIR}/log"; then
-        return 1
-    fi
-
-    if ! chown -R root:administrators "${USYSTEM_WORK_DIR}"/bin; then
-        return 1
-    fi
-    if ! chown -R root:administrators "${USYSTEM_WORK_DIR}"/etc; then
-        return 1
-    fi
-    if ! chown -R root:administrators "${USYSTEM_WORK_DIR}"/log; then
-        return 1
-    fi
-
-    return 0
-}
-
-function repair() {
-    MSG="Repairing"
-    MSG_CONFIG=${MSG}
-    FORCE_CONFIG=0
-    while [ ${#} -gt 0 ]; do
-        case $1 in
-            -h | --help | help )
-                repair_help
-            ;;
-            --install | install )
-                MSG="Installing"
-                shift 1
-            ;;
-            -f | --force-config )
-                MSG_CONFIG="Override"
-                FORCE_CONFIG=1
-                shift 1
-            ;;
-        esac
-    done
-
-    if [[ $(/usr/bin/id -u) -ne 0 ]]; then
-        echo "'usystem repair' must be run as root"
-        exit 1
-    fi
-
-    printf "%-32s " "${MSG} rc.usystem ..."
-    if cp "${USYSTEM_WORK_DIR}/etc/rc.usystem" /etc; then
-        printf '[OK]\n'
-    else
-        printf '[FAILED]\n'
-        exit 1
-    fi
-
-    printf "%-32s " "${MSG} rc.local ..."
-    if cp "${USYSTEM_WORK_DIR}/etc/rc.local" /etc; then
-        printf '[OK]\n'
-    else
-        printf '[FAILED]\n'
-        exit 1
-    fi
-
-    printf "%-32s " "Fixing permissions ..."
-    if repair_permissions; then
-        printf '[OK]\n'
-    else
-        printf '[FAILED]\n'
-        exit 1
-    fi
-
-    # Install/Override Config
-    install_config "${FORCE_CONFIG}" "${MSG_CONFIG}"
-
-    # Make sure to start usystem
-    "${USYSTEM_WORK_DIR}/etc/rc.usystem" start
-
-    # Repair completed, now link/re-link all usystem resources back to the OS
-    # This will a user to only issue the repair command after a DSM upgrade to
-    # completely restore everything
-    #
-    # Link usystem resources to OS
-    link "$@"
-
-    exit 0;
-}
-
-function link_help() {
-    echo $CLI_NAME link
-    echo
-    echo Description:
-    printf "%-4s%s\n" "" "Link usystem"
-    printf "%-4s%s\n" "" "This will link resources from usystem to the OS."
-    exit 0
-}
-
-function link() {
-    while [ ${#} -gt 0 ]; do
-        case $1 in
-            -h | --help | help )
-                link_help
-            ;;
-            * )
-                break
-            ;;
-        esac
-    done
-
-    if [[ $(/usr/bin/id -u) -ne 0 ]]; then
-        echo "'usystem link' must be run as root"
-        exit 1
-    fi
-}
-
-function install_help() {
-    echo $CLI_NAME install
-    echo
-    echo Description:
-    printf "%-4s%s\n" "" "Install usystem"
-    printf "%-4s%s\n" "" "This will install, mount and link usystem to your Synology"
-    echo
-    echo Options:
-    printf "%-4s%-23s %s\n" "" "-f, --force" "Force install";
-    printf "%-4s%-23s %s\n" "" "--force-config" "Override config";
-    exit 0
-}
-
+#===============================================================================
+# COMMANDS
+#===============================================================================
 function install() {
-    FORCE=0
-    FORCE_CONFIG=0
+    # Install Variables
+    local FORCE=0
+
+    # Parse Install Options
     while [ ${#} -gt 0 ]; do
         case $1 in
-            -h | --help | help )
-                install_help
+            -h | --help | help)
+                scriptinfo 0 install
             ;;
 
-            -f | --force )
-                FORCE=1
-                shift 1
-            ;;
-            --force-config )
-                FORCE_CONFIG=1
-                shift 1
+            -f | --force)       FORCE=1;                readonly FORCE;             shift 1 ;;
+            -v | --volume)      USYS_VOLUME="${1}";     readonly USYS_VOLUME;       shift 1 ;;
+            -t | --target-dir)  USYS_TARGET="${1}";     readonly USYS_TARGET;       shift 1 ;;
+            -r | --root-dir)    USYS_ROOT="${1}";       readonly USYS_ROOT;         shift 1 ;;
+            -b | --backup-dir)  USYS_BACKUP_DIR="${1}"; readonly USYS_BACKUP_DIR;   shift 1 ;;
+            -c | --config-dir)  USYS_CONFIG_DIR="${1}"; readonly USYS_CONFIG_DIR;   shift 1 ;;
+            -l | --log-dir)     USYS_LOG_DIR="${1}";    readonly USYS_LOG_DIR;      shift 1 ;;
+
+            * )
+                printf "unknown option: '%s'\n" "${1}"
+                scriptinfo 1 install
             ;;
         esac
     done
 
-    if [[ $(/usr/bin/id -u) -ne 0 ]]; then
-        echo "'usystem install' must be run as root"
-        exit 1
-    fi
+    # Check if we are running as root
+    is_root "${FUNCNAME[0]}"
 
-    # Create usystem root directory
-    if [ ! -d "${USYSTEM_ROOT_DIR}" ]; then
-        mkdir -p "${USYSTEM_ROOT_DIR}"
-    fi
-
-    if [ -d "${USYSTEM_WORK_DIR}" ] && [ "${FORCE}" -eq 0 ]; then
-        echo "${USYSTEM_WORK_DIR} already exists; please use 'usystem upgrade'"
-        exit 1
-    fi
-
-    printf "%-32s " "unmounting usystem tmp ..."
-    if grep ' /usys/tmp ' /proc/mounts > /dev/null 2>&1; then
-        if umount /usys/tmp; then
-            printf '[OK]\n'
-        else
-            printf '[FAILED]\n'
-            echo "ERROR: Failed to umount, manual install required"
-            exit 1
-        fi
-    else
-        printf '[OK]\n'
-    fi
-
-    printf "%-32s " "unmounting usystem ..."
-    if grep ' /usys ' /proc/mounts > /dev/null 2>&1; then
-        if umount /usys; then
-            printf '[OK]\n'
-        else
-            printf '[FAILED]\n'
-            echo "ERROR: Failed to umount, manual install required"
-            exit 1
-        fi
-    else
-        printf '[OK]\n'
-    fi
-
-    remove_usystem_archive
-
-    printf "%-32s " "Downloading usystem ..."
-    DOWNLOAD_LOG="${USYSTEM_ROOT_DIR}/usystem.download.${CLI_EXEC_DATE}.log"
-    if _download "${DOWNLOAD_LOG}"; then
-        printf '[OK]\n'
-
-        # Everything went OK; delete download log
-        rm "${DOWNLOAD_LOG}"
-    else
-        printf '[FAILED]\n'
-        echo "ERROR: Failed to download; see log: ${DOWNLOAD_LOG}"
-        exit 1
-    fi
-
-    printf "%-32s " "Installing ..."
-    EXTRACT_LOG="${USYSTEM_ROOT_DIR}/usystem.install.${CLI_EXEC_DATE}.log"
-    if tar -xvf "${USYSTEM_ARCHIVE}" --strip-components=1 -C "${USYSTEM_ROOT_DIR}" > "${EXTRACT_LOG}" 2>&1; then
-        printf '[OK]\n'
-
-        # Everything went ok; delete install log, and downloaded archive
-        rm "${EXTRACT_LOG}"
-        remove_usystem_archive
-        remove_git
-    else
-        printf '[FAILED]\n'
-        echo "ERROR: Failed to extract; see log: ${EXTRACT_LOG}"
-        exit 1
-    fi
-
-    # Create all directories
-    printf "%-32s " "Creating Directories ..."
-    if create_directories; then
-        printf '[OK]\n'
-    else
-        printf '[FAILED]\n'
-        echo "ERROR: Failed to create directories"
-        exit 1
-    fi
-
-    if [ "${FORCE_CONFIG}" -eq 1 ]; then
-        repair --install --force-config
-    else
-        repair --install
-    fi
+    # Verify the volume path exists
+    #exists "${USYS_VOLUME}" || ( printf "Volume: '%s' does not exists\n" "${USYS_VOLUME}" && exit 1 )
+    exists "${USYS_VOLUME}" || ( log ERROR "Volume: '${USYS_VOLUME}' does not exists" && exit 1 )
 }
 
-function backup_help() {
-    echo $CLI_NAME backup
-    echo
-    echo Description:
-    printf "%-4s%s\n" "" "Create backup of usystem."
-    exit 0
+#===============================================================================
+# FINISH
+#
+# Script cleanup function
+# ':' Returns TRUE to ensure empty function is allowed to be defined
+#===============================================================================
+function finish() {
+    :
 }
 
-function backup() {
-    while [ ${#} -gt 0 ]; do
-        case $1 in
-            -h | --help | help )
-                backup_help
-            ;;
-        esac
-    done
 
-    umask 022
-    rm -f "${USYSTEM_ROOT_DIR}"/usystem.tar.gz
-
-    if [ ! -d "${USYSTEM_ROOT_DIR}/backup" ]; then
-        mkdir -p "${USYSTEM_ROOT_DIR}/backup"
-    fi
-
-    printf "%-32s " "Creating backup ..."
-    if tar -czf "${BACKUP_ARCHIVE}" --exclude usystem/tmp -C "${USYSTEM_ROOT_DIR}" usystem/; then
-        printf '[OK]\n'
-    else
-        printf '[FAILED]\n'
-        echo "ERROR: Failed to create backup"
-        exit 1
-    fi
-}
-
-function upgrade_help() {
-    echo $CLI_NAME upgrade
-    echo
-    echo Description:
-    printf "%-4s%s\n" "" "Upgrade to latest version of usystem."
-    echo
-    echo Options:
-    printf "%-4s%-23s %s\n" "" "-f, --force" "Force upgrade";
-    printf "%-4s%-23s %s\n" "" "--force-config" "Override config";
-    exit 0
-}
-
-function upgrade() {
-    FORCE=0
-    FORCE_CONFIG=0
-    while [ ${#} -gt 0 ]; do
-        case $1 in
-            -h | --help | help )
-                upgrade_help
-            ;;
-            -f | --force )
-                FORCE=1
-                shift 1
-            ;;
-            --force-config )
-                FORCE_CONFIG=1
-                shift 1
-            ;;
-        esac
-    done
-
-    # Set umask
-    umask 022
-
-    if [[ $(/usr/bin/id -u) -ne 0 ]]; then
-        echo "usystem upgrade must be run as root"
-        exit 1
-    fi
-
-    # Create backup
-    backup "$@"
-
-    # Remove usystem.tar.gz if present
-    remove_usystem_archive
-
-    printf "%-32s " "Downloading upgrade ..."
-    DOWNLOAD_LOG="${USYSTEM_WORK_DIR}/log/usystem.download.${CLI_EXEC_DATE}.log"
-    if _download "${DOWNLOAD_LOG}"; then
-        printf '[OK]\n'
-
-        # Everything went OK; delete download log
-        rm "${DOWNLOAD_LOG}"
-    else
-        printf '[FAILED]\n'
-        echo "ERROR: Failed to download; see log: ${DOWNLOAD_LOG}"
-        exit 1
-    fi
-
-    # Perform upgrade
-    printf "%-32s " "Upgrading ..."
-    EXTRACT_LOG="${USYSTEM_WORK_DIR}/log/usystem.upgrade.${CLI_EXEC_DATE}.log"
-    if tar -xvf "${USYSTEM_ARCHIVE}" --strip-components=1 -C "${USYSTEM_ROOT_DIR}" > "${EXTRACT_LOG}" 2>&1; then
-        printf '[OK]\n'
-
-        # Everything went OK, remove log and archive
-        rm "${EXTRACT_LOG}"
-        remove_usystem_archive
-        remove_git
-    else
-        printf '[FAILED]\n'
-        echo "ERROR: Failed to extract; see log: ${EXTRACT_LOG}"
-
-        printf "%-32s " "unmounting usystem tmp ..."
-        if grep ' /usys/tmp ' /proc/mounts > /dev/null 2>&1; then
-            if umount /usys/tmp; then
-                printf '[OK]\n'
-            else
-                printf '[FAILED]\n'
-                echo "ERROR: Failed to umount, manual install required"
-                exit 1
-            fi
-        else
-            printf '[OK]\n'
-        fi
-
-        printf "%-32s " "unmounting usystem ..."
-        if grep ' /usys ' /proc/mounts > /dev/null 2>&1; then
-            if umount /usys; then
-                printf '[OK]\n'
-            else
-                printf '[FAILED]\n'
-                echo "ERROR: Failed to umount, manual restore required"
-                exit 1
-            fi
-        else
-            printf '[OK]\n'
-        fi
-
-        printf "%-32s " "Removing current ..."
-        if rm -rf "${USYSTEM_ROOT_DIR}/usystem"; then
-            printf '[OK]\n'
-        else
-            printf '[FAILED]\n'
-            echo "ERROR: Failed to remove current version, manual restore required"
-            exit 1
-        fi
-
-        RESTORE_LOG="${USYSTEM_ROOT_DIR}/usystem.restore.${CLI_EXEC_DATE}.log"
-        printf "%-32s " "Restoring from backup ..."
-        if tar -xvf "${BACKUP_ARCHIVE}" -C "${USYSTEM_ROOT_DIR}" > "${RESTORE_LOG}" 2>&1; then
-            printf '[OK]\n'
-
-            # Restore complete, removing log
-            rm "${REVERT_LOG}"
-        else
-            printf '[FAILED]\n'
-            echo "ERROR: Failed to restore backup ($), manual restore required"
-            echo "ERROR: See restore log: ${RESTORE_LOG}"
-            exit 1
-        fi
-
-        # Terminate Upgrade
-        exit 1
-    fi
-
-    # Create all directories
-    printf "%-32s " "Creating Directories ..."
-    if create_directories; then
-        printf '[OK]\n'
-    else
-        printf '[FAILED]\n'
-        echo "ERROR: Failed to create directories"
-        exit 1
-    fi
-
-    if [ "${FORCE_CONFIG}" -eq 1 ]; then
-        repair --force-config
-    else
-        repair
-    fi
-}
-
-function main_help() {
-    echo $CLI_NAME $CLI_VERSION
-    echo
-    echo Usage:
-    printf "%-4s%s\n" "" "$CLI_NAME command [options]"
-    printf "%-4s%s\n" "" "$CLI_NAME command help"
-    echo
-    echo Global:
-    printf "%-4s%-23s %s\n" "" "help" "show help";
-    printf "%-4s%-23s %s\n" "" "version" "show version";
-    echo
-    echo Commands:
-    printf "%-4s%-23s %s\n" "" "backup" "Backup usystem";
-    printf "%-4s%-23s %s\n" "" "install" "Install usystem";
-    printf "%-4s%-23s %s\n" "" "upgrade" "Upgrade usystem";
-    printf "%-4s%-23s %s\n" "" "repair" "Repair usystem";
-    printf "%-4s%-23s %s\n" "" "link" "Link usystem resources to OS";
-    printf "%-4s%-23s %s\n" "" "clean" "Clean usystem";
-
-    exit "${1:-0}";
-}
-
-function version() {
-    echo $CLI_NAME $CLI_VERSION;
-    exit 0
-}
-
+#===============================================================================
+# MAIN
+#===============================================================================
 function main() {
     if (( ${#} == 0 )); then
-        main_help 0;
+        scriptinfo 0 usage
     fi
 
     case ${1} in
-        help )
-            main_help 0;
+        -h | --help | help )
+            scriptinfo 0 usage
         ;;
-        version )
-            version
+
+        -v | --version | version )
+            scriptinfo 0 version
         ;;
-        backup | install | upgrade | repair | link | clean )
+
+        -l | --log-level )
+            LOG_LEVEL="${1^^}"
+            shift 1
+        ;;
+
+        install )
             $1 "${@:2}";
         ;;
+
         * )
             echo "unknown command: $1";
-            main_help 1;
+            scriptinfo 1 usage
         ;;
     esac
 }
