@@ -357,7 +357,7 @@ function log_file() {
 function umount_usystem() {
     # unmount /usys/tmp
     if grep " ${USYS_TMP_DIR} " /proc/mounts > /dev/null 2>&1; then
-        fecho "umounting usystem:tmp ..."
+        fecho "umount ${USYS_BIND_DIR}/tmp ..."
         if umount "${USYS_TMP_DIR}"; then
             ok
         else
@@ -367,7 +367,7 @@ function umount_usystem() {
 
     # umount /usys
     if grep " ${USYS_BIND_DIR} " /proc/mounts > /dev/null 2>&1; then
-        fecho "unmounting usystem ..."
+        fecho "umount ${USYS_BIND_DIR} ..."
         if umount "${USYS_BIND_DIR}"; then
             ok
         else
