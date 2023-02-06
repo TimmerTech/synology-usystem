@@ -336,27 +336,26 @@ function create_directories() {
 }
 
 function fix_permissions() {
-    # set permissions on /usys
-    chmod 755 /usys || return 1
-    chown root:root /usys || return 1
+    local -r LOG="${1}"
 
-    local -ra PERMISSIONS=(
-        ["${USYS_ROOT}/bin"]="775@root:administrator"
-        ["${USYS_ROOT}/etc"]="775@root:administrator"
-        ["${USYS_ROOT}/log"]="775@root:administrator"
-        ["${USYS_ROOT}/sbin"]="755@root:administrator"
-    )
+    # set permissions on /usys
+    chmod -v 755 /usys >> "${LOG}" 2>&1 || return 1
+    chown -v root:root /usys >> "${LOG}" 2>&1 || return 1
+
+    local -A PERMISSIONS
+    PERMISSIONS[${USYS_ROOT}/bin]="775 root:administrators"
+    PERMISSIONS[${USYS_ROOT}/etc]="775 root:administrators"
+    PERMISSIONS[${USYS_ROOT}/log]="775 root:administrators"
+    PERMISSIONS[${USYS_ROOT}/sbin]="755 root:administrators"
 
     for P in "${!PERMISSIONS[@]}"; do
-        PATH="${P}"
-        PERM=("${PERMISSIONS[${P}]//@/ }")
+        # shellcheck disable=SC2206
+        PERM=(${PERMISSIONS[$P]})
         CHMOD=${PERM[0]}
         CHOWN=${PERM[1]}
 
-
-
-        # chmod -Rv "${CHMOD}" "${PATH}" || return 1
-        # chown -Rv "${CHOWN}" "${PATH}" || return 1
+        chmod -Rv "${CHMOD}" "${P}" >> "${LOG}" 2>&1 || return 1
+        chown -Rv "${CHOWN}" "${P}" >> "${LOG}" 2>&1 || return 1
     done
 
     return 0
@@ -397,9 +396,9 @@ function download() {
 }
 
 function install_archive() {
-    local LOG="${USYS_TARGET}/usystem.install.${CLI_EXEC_DT}.log"
-    local -r FORCE="${1:-false}"
-    local -r FORCE_CONFIG="${2:-false}"
+    local -r LOG="${1}"
+    local -r FORCE="${2:-false}"
+    local -r FORCE_CONFIG="${3:-false}"
 
     # Set umask
     umask 022
@@ -425,22 +424,17 @@ function install_archive() {
         fi
 
         # Now copy the usystem to the its final destination
-        if mv -v "${USYS_TARGET}"/install/usystem/* "${USYS_ROOT}" >> "${LOG}" 2>&1; then
+        if ! cp -rav "${USYS_TARGET}"/install/usystem/* "${USYS_ROOT}" >> "${LOG}" 2>&1; then
             fail ERROR "Failed to move usystem; see log: ${LOG}" && exit 1
         fi
 
         # Copy LICENSE to USYS_TARGET
-        if mv -v "${USYS_TARGET}/install/LICENSE" "${USYS_TARGET}/LICENSE" >> "${LOG}" 2>&1; then
+        if ! cp -rav "${USYS_TARGET}/install/LICENSE" "${USYS_TARGET}/LICENSE" >> "${LOG}" 2>&1; then
             fail ERROR "Failed to move LICENSE; see log: ${LOG}" && exit 1
         fi
 
         # Remove install folder, to make sure we cleanup after ourselfs
         rm -rf "${USYS_TARGET}/install" >> "${LOG}" 2>&1
-
-        # Fix permissions of file/folders
-        if ! fix_permissions; then
-            fail ERROR "Failed to repair permissions"
-        fi
 
         # Install OK
         ok
@@ -501,6 +495,7 @@ function install() {
     local FORCE=${FORCE:-false}
     local FORCE_CONFIG=${FORCE_CONFIG:-false}
     local LOCAL_INSTALL="false"
+    local LOG="${USYS_TARGET}/usystem.install.${CLI_EXEC_DT}.log"
 
     # Options array for calling the repair function after install
     local CMD_REPAIR_OPTS=("--install")
@@ -582,7 +577,7 @@ function install() {
     fi
 
     # Install archive, either downloaded or local
-    install_archive "${FORCE}" "${FORCE_CONFIG}"
+    install_archive "${LOG}" "${FORCE}" "${FORCE_CONFIG}"
 
     # Create directories
     fecho "Creating directories ..."
@@ -590,6 +585,11 @@ function install() {
         ok
     else
         fail ERROR: "Failed to create directories" && exit 1
+    fi
+
+    # Fix permissions of file/folders
+    if ! fix_permissions "${LOG}"; then
+        fail ERROR "Failed to repair permissions"
     fi
 
     # Install variables in files, this step is only done during install
