@@ -388,7 +388,7 @@ function install_archive() {
     fi
 
     # Create temporary install directory
-    mkdir -d "${USYS_TARGET}/install"
+    mkdir -p "${USYS_TARGET}/install"
 
     fecho "Installing ..."
     # Extract archive to USYS_TARGET/install, we are installing to this temporary directory
@@ -398,7 +398,7 @@ function install_archive() {
 
         # Create USYS_ROOT
         if [ ! -d "${USYS_ROOT}" ]; then
-            mkdir -d "${USYS_ROOT}"
+            mkdir -p "${USYS_ROOT}"
         fi
 
         # Now copy the usystem to the its final destination
