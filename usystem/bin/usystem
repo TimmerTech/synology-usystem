@@ -340,8 +340,6 @@ function fix_permissions() {
     chmod 755 /usys || return 1
     chown root:root /usys || return 1
 
-    echo ">>>"
-
     local -ra PERMISSIONS=(
         ["${USYS_ROOT}/bin"]="775@root:administrator"
         ["${USYS_ROOT}/etc"]="775@root:administrator"
