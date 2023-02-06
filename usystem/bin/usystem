@@ -675,7 +675,11 @@ function link() {
 # ':' Returns TRUE to ensure empty function is allowed to be defined
 #===============================================================================
 function finish() {
-    :
+    # Remove USYS_TARGET/install before installing, this directory might be
+    # present due to install failure
+    if [ -d "${USYS_TARGET}/install" ]; then
+        rm -rf "${USYS_TARGET}/install"
+    fi
 }
 
 
