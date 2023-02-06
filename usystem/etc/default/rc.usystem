@@ -1,6 +1,6 @@
 #!/bin/sh
 
-%INSTALL_VARS%
++++INSTALL_VARS+++
 
 if test -z "${USYSTEM_DIR}"; then
     USYSTEM_DIR=/volume1/@usystem/usystem

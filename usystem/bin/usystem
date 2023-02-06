@@ -363,7 +363,9 @@ function fix_permissions() {
 
 function install_vars() {
 
-read -r -d '' INSTALL_VARS <<EOF
+    rm -f "${USYS_TARGET}/VARS.env"
+
+    INSTALL_VARS=$(cat > "${USYS_TARGET}/VARS.env" <<EOF
 declare -r USYS_VOLUME=${USYS_VOLUME}
 declare -r USYS_TARGET=${USYS_TARGET}
 declare -r USYS_ROOT=${USYS_ROOT}
@@ -371,12 +373,17 @@ declare -r USYS_BACKUP_DIR=${USYS_BACKUP_DIR}
 declare -r USYS_CONFIG_DIR=${USYS_CONFIG_DIR}
 declare -r USYS_LOG_DIR=${USYS_LOG_DIR}
 EOF
+)
 
     # Install Variables in files
-    # Write Install Variables to config
-    sed -i "s|%INSTALL_VARS%|${INSTALL_VARS}" "${USYS_CONFIG}"
-    sed -i "s|%INSTALL_VARS%|${INSTALL_VARS}" "${USYS_CONFIG_DIR}/default/rc.local"
-    sed -i "s|%INSTALL_VARS%|${INSTALL_VARS}" "${USYS_CONFIG_DIR}/default/rc.usystem"
+    sed -i -e '/+++INSTALL_VARS+++/ {
+        r $USYS_TARGET/VARS.env
+        d
+    }' "${USYS_CONFIG_DIR}/default/usystem.conf"
+
+    #sed -i "s/+++INSTALL_VARS+++/$INSTALL_VARS/" "${USYS_CONFIG}/default/usystem.conf"
+    # sed -i "s|+++INSTALL_VARS+++|${INSTALL_VARS}|g" "${USYS_CONFIG_DIR}/default/rc.local"
+    # sed -i "s|+++INSTALL_VARS+++|${INSTALL_VARS}|g" "${USYS_CONFIG_DIR}/default/rc.usystem"
 }
 
 function download() {
@@ -716,4 +723,5 @@ function main() {
     esac
 }
 
-main "$@";
+# main "$@";
+#install_vars

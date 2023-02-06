@@ -23,7 +23,7 @@ set -o pipefail # exit on pipe failure
 # global variables
 ################################################################################
 declare -r USYS_DIR=/usys
-%INSTALL_VARS%
++++INSTALL_VARS+++
 
 
 # Mount Synology User System
