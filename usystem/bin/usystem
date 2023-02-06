@@ -753,8 +753,7 @@ function repair() {
     # completely restore everything
     #
     # Link user system resources to OS
-    echo "\$@:" "$@"
-    link "$@"
+    link
 }
 
 function link() {
