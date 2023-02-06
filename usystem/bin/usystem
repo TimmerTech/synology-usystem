@@ -365,7 +365,6 @@ function install_vars() {
 
     rm -f "${USYS_TARGET}/VARS.env"
 
-    $
     cat > "${USYS_TARGET}/VARS.env" <<EOF
 declare -r USYS_VOLUME=${USYS_VOLUME}
 declare -r USYS_TARGET=${USYS_TARGET}
