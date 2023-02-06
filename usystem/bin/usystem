@@ -318,8 +318,11 @@ function create_directories() {
 }
 
 function fix_permissions() {
+    # set permissions on /usys
+    chmod 755 /usys
+    chown root:root /usys
+
     local -ra PERMISSIONS=(
-        ["/usys"]="755@root:root"
         ["${USYS_ROOT}/bin"]="775@root:administrator"
         ["${USYS_ROOT}/etc"]="775@root:administrator"
         ["${USYS_ROOT}/log"]="775@root:administrator"
