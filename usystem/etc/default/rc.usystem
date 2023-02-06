@@ -33,13 +33,13 @@ set -o pipefail # exit on pipe failure
 function umount_usystem() {
     # unmount ${USYS_BIND_DIR}/tmp
     if grep " ${USYS_TMP_DIR} " /proc/mounts > /dev/null 2>&1; then
-        echo "unmounting: ${USYS_TMP_DIR}"
+        echo "Synology User System; umount: ${USYS_TMP_DIR}"
         umount "${USYS_TMP_DIR}"
     fi
 
     # umount ${USYS_BIND_DIR}
     if grep " ${USYS_BIND_DIR} " /proc/mounts > /dev/null 2>&1; then
-        echo "unmounting: ${USYS_BIND_DIR}"
+        echo "Synology User System; umount: ${USYS_BIND_DIR}"
         umount "${USYS_BIND_DIR}"
     fi
 
@@ -54,7 +54,7 @@ function mount_usystem() {
             chmod 775 "${USYS_BIND_DIR}"
             chown root:administrators "${USYS_BIND_DIR}"
         fi
-        echo "mounting: ${USYS_BIND_DIR}"
+        echo "Synology User System; mount: ${USYS_BIND_DIR}"
         mount -o bind "${USYS_ROOT}" "${USYS_BIND_DIR}"
     fi
 
@@ -64,7 +64,7 @@ function mount_usystem() {
         if [ ! -d "${USYS_TMP_DIR}" ]; then
             mkdir -p "${USYS_TMP_DIR}"
         fi
-        echo "mounting: ${USYS_BIND_DIR}/tmp"
+        echo "Synology User System; mount: ${USYS_BIND_DIR}/tmp"
         mount -o bind /tmp "${USYS_TMP_DIR}"
     fi
 }
@@ -74,7 +74,7 @@ function link_profile() {
     if grep -qF ". ${USYS_BIND_DIR}/etc/profile" /etc/profile; then
         echo "Synology User System: Enabled"
     else
-        echo "Synology User System: Updating; /etc/profile"
+        echo "Synology User System; Updating: /etc/profile"
 cat >> /etc/profile <<"EOF"
 
 # Loading Synology User System
