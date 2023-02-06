@@ -1,5 +1,7 @@
 #!/bin/sh
 
+%INSTALL_VARS%
+
 if test -z "${USYSTEM_DIR}"; then
     USYSTEM_DIR=/volume1/@usystem/usystem
 fi
@@ -12,6 +14,7 @@ case "$1" in
                 # Mount user system
                 if [ ! -d /usys ]; then
                     mkdir -p /usys
+                    chmod 755 /usys
                 fi
                 mount -o bind "${USYSTEM_DIR}" /usys
 

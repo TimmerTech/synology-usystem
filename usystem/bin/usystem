@@ -319,6 +319,7 @@ function create_directories() {
 
 function fix_permissions() {
     local -ra PERMISSIONS=(
+        ["/usys"]="755@root:root"
         ["${USYS_ROOT}/bin"]="775@root:administrator"
         ["${USYS_ROOT}/etc"]="775@root:administrator"
         ["${USYS_ROOT}/log"]="775@root:administrator"
@@ -336,6 +337,23 @@ function fix_permissions() {
     done
 
     return 0
+}
+
+function install_vars() {
+read -r -d '' INSTALL_VARS <<EOF
+declare -r USYS_VOLUME=${USYS_VOLUME}
+declare -r USYS_TARGET=${USYS_TARGET}
+declare -r USYS_ROOT=${USYS_ROOT}
+declare -r USYS_BACKUP_DIR=${USYS_BACKUP_DIR}
+declare -r USYS_CONFIG_DIR=${USYS_CONFIG_DIR}
+declare -r USYS_LOG_DIR=${USYS_LOG_DIR}
+EOF
+
+    # Install Variables in files
+    # Write Install Variables to config
+    sed -i "s|%INSTALL_VARS%|${INSTALL_VARS}" "${USYS_CONFIG}"
+    sed -i "s|%INSTALL_VARS%|${INSTALL_VARS}" "${USYS_CONFIG_DIR}/default/rc.local"
+    sed -i "s|%INSTALL_VARS%|${INSTALL_VARS}" "${USYS_CONFIG_DIR}/default/rc.usystem"
 }
 
 function download() {
@@ -415,20 +433,6 @@ function install_config() {
     if [ ! -f "${USYS_CONFIG}" ] || [ "${FORCE_CONFIG}" ]; then
         fecho "${MSG} config ..."
         if cp "${USYS_CONFIG_DIR}/default/usystem.conf" "${USYS_CONFIG}"; then
-            # Config file copied to default location
-            # Now fill it with the install variables
-            read -r -d '' INSTALL_VARS <<EOF
-USYS_VOLUME=${USYS_VOLUME}
-USYS_TARGET=${USYS_TARGET}
-USYS_ROOT=${USYS_ROOT}
-USYS_BACKUP_DIR=${USYS_BACKUP_DIR}
-USYS_CONFIG_DIR=${USYS_CONFIG_DIR}
-USYS_LOG_DIR=${USYS_LOG_DIR}
-EOF
-
-            # Write Install Variables to config
-            sed -i "s|%INSTALL_VARS%|${INSTALL_VARS}" "${USYS_CONFIG}"
-
             ok
         else
             fail ERROR "Failed to install config"
@@ -469,6 +473,9 @@ function install() {
     local FORCE_CONFIG=0
     local LOCAL_INSTALL=0
 
+    # Options array for calling the repair function after install
+    local CMD_REPAIR_OPTS=("--install")
+
     # Parse Install Options
     while [ ${#} -gt 0 ]; do
         case $1 in
@@ -484,7 +491,14 @@ function install() {
             -c | --config-dir)  USYS_CONFIG_DIR="${1}";     readonly USYS_CONFIG_DIR;   shift 1 ;;
 
             --log-dir)          USYS_LOG_DIR="${1}";        readonly USYS_LOG_DIR;      shift 1 ;;
-            --force-config)     FORCE_CONFIG=1;             readonly FORCE_CONFIG;      shift 1 ;;
+            --force-config)
+                FORCE_CONFIG=1;
+                readonly FORCE_CONFIG;
+
+                # Add option to repair command
+                CMD_REPAIR_OPTS+=("--force-config")
+                shift 1
+            ;;
             --local)
                     LOCAL_INSTALL=1
                     USYS_REPO_ARCHIVE="${2}"
@@ -505,9 +519,14 @@ function install() {
     # Verify the volume path exists
     exists "${USYS_VOLUME}" || ( log ERROR "Volume: '${USYS_VOLUME}' does not exists" && exit 1 )
 
-    # Create targer directory on volume
+    # Create target directory on volume
     if [ ! -d "${USYS_TARGET}" ]; then
         mkdir -p "${USYS_TARGET}"
+    fi
+
+    # Create target directory on OS
+    if [ ! -d /usys ]; then
+        mkdir -p /usys
     fi
 
     # Verify that the root directory does not exist
@@ -543,22 +562,17 @@ function install() {
         fail ERROR: "Failed to create directories" && exit 1
     fi
 
-    # Install config
-    install_config "${FORCE_CONFIG}" "Installing"
+    # Install variables in files, this step is only done during install
+    install_vars
 
-    # Install run commands
-    install_rc "Installing"
-
-    # Start usystem
-    # We are going to start the user system from rc.local
-    # The reason we are starting from rc.local is that rc.local after it starts
-    # starts all user configured rc.d/* because we might be performing a forced
-    # install and overwrite an existing installation
-    /etc/rc.local
+    # Call repair user system, to finish the installation
+    #repair "${CMD_REPAIR_OPTS[@]}"
 }
 
 function repair() {
     local FORCE_CONFIG=0
+    local CONTEXT_MSG="Repairing"
+    local CONTEXT_CFG="${CONTEXT_MSG}"
 
     # Parse Install Options
     while [ ${#} -gt 0 ]; do
@@ -567,15 +581,23 @@ function repair() {
                 scriptinfo 0 repair
             ;;
 
+            # Hidden option, this option only exists for the call from the 'install' command
+            # This option exists to correct the message output to the user
+            --install)
+                CONTEXT_MSG="Installing"
+                shift 1
+            ;;
+
+
             --force-config)
-                FORCE_CONFIG=1;
-                readonly FORCE_CONFIG;
+                FORCE_CONFIG=1; readonly FORCE_CONFIG;
+                CONTEXT_CFG="Override"
                 shift 1
             ;;
 
             * )
                 printf "unknown option: '%s'\n" "${1}"
-                scriptinfo 1 install
+                scriptinfo 1 repair
             ;;
         esac
     done
@@ -592,20 +614,24 @@ function repair() {
     fi
 
     # Install config
-    install_config "${FORCE_CONFIG}" "Repairing"
+    install_config "${FORCE_CONFIG}" "${CONTEXT_CFG}"
 
     # Install run commands
-    install_rc "Reparing"
+    install_rc "${CONTEXT_MSG}"
 
     # Start usystem
     # We are going to start the user system from rc.local
     # The reason we are starting from rc.local is that rc.local after it starts
     # starts all user configured rc.d/* because we might be performing a forced
     # install and overwrite an existing installation
-    /etc/rc.local
+    #/etc/rc.local
 
-    # Link resources
-    link "$@"
+    # Repair completed, now link/re-link all usystem resources back to the OS
+    # This will a user to only issue the repair command after a DSM upgrade to
+    # completely restore everything
+    #
+    # Link user system resources to OS
+    #link "$@"
 }
 
 function link() {
