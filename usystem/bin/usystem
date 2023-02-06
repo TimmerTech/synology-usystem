@@ -433,7 +433,7 @@ function install_config() {
     local -r FORCE_CONFIG="${1}"
     local -r MSG="${2}"
 
-    if [ ! -f "${USYS_CONFIG}" ] || [ "${FORCE_CONFIG}" ]; then
+    if [ ! -f "${USYS_CONFIG}" ] || [ "${FORCE_CONFIG}" -eq 1 ]; then
         fecho "${MSG} config ..."
         if cp "${USYS_CONFIG_DIR}/default/usystem.conf" "${USYS_CONFIG}"; then
             ok
@@ -535,7 +535,7 @@ function install() {
     # Verify that the root directory does not exist
     # If it exists, inform the user to use the 'upgrade' command
     # This check can be overridden with '--force'
-    if [ -d "${USYS_ROOT}" ] && [ ! "${FORCE}" ]; then
+    if [ -d "${USYS_ROOT}" ] && [ "${FORCE}" -eq 0 ]; then
         log ERROR "${USYS_ROOT} exist; please use '${CLI_NAME} upgrade'"
         exit 1
     fi
