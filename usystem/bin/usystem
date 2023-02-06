@@ -131,10 +131,14 @@ declare -r USYS_CONFIG="${USYS_CONFIG:-${USYS_CONFIG_DIR}/usystem.conf}"
 
 # User System Repository
 declare -r USYS_REPO_URL="${USYS_REPO_URL:-https://github.com/TimmerTech/synology-usystem}";
-declare -r USYS_REPO_ARCHIVE="${USYS_REPO_ARCHIVE:-${USYS_ROOT}/usystem.tgz}";
+declare -r USYS_REPO_ARCHIVE="${USYS_REPO_ARCHIVE:-${USYS_TARGET}/usystem.tgz}";
 
 # CLI Exec Date/Time
 declare -r CLI_EXEC_DT="$(date +'%Y%m%d-%H%M%S')";
+
+# Install Variables
+declare FORCE=false
+declare FORCE_CONFIG=false
 
 
 #===============================================================================
@@ -225,10 +229,9 @@ function exists() {
 #
 # usage: if is_enabled "${VAR}"; then
 function is_enabled() {
-    local BOOL="${1}"
+    local -r BOOL="${1}"
 
-    # shellcheck disable=2086
-    if (( BOOL == 1 )) || [ "${BOOL}" == true ] || [ "${BOOL,,}" = "true" ] || [ "${BOOL,,}" = "enable" ] || [ "${BOOL,,}" = "enabled" ] || [ "${BOOL,,}" = "on" ]; then
+    if [ "${BOOL}" = 1 ] || [ "${BOOL}" = true ] || [ "${BOOL,,}" = "true" ] || [ "${BOOL,,}" = "enable" ] || [ "${BOOL,,}" = "enabled" ] || [ "${BOOL,,}" = "on" ]; then
         return 0
     fi
 
@@ -249,10 +252,10 @@ function log() {
     fi
 
     # Check is current log level is allowed
-    (( ${LOG_LEVELS[${LVL}]} <= ${LOG_LEVELS[${LOG_LEVEL}]} )) && return 2
-
-    if [ -n "${MSG}" ]; then
-        printf '%-5s: %s\n' "${LVL}" "${MSG}"
+    if (( ${LOG_LEVELS[${LVL}]} <= ${LOG_LEVELS[${LOG_LEVEL}]} )); then
+        if [ -n "${MSG}" ]; then
+            printf '%-5s: %s\n' "${LVL}" "${MSG}"
+        fi
     fi
 }
 
@@ -334,8 +337,10 @@ function create_directories() {
 
 function fix_permissions() {
     # set permissions on /usys
-    chmod 755 /usys
-    chown root:root /usys
+    chmod 755 /usys || return 1
+    chown root:root /usys || return 1
+
+    echo ">>>"
 
     local -ra PERMISSIONS=(
         ["${USYS_ROOT}/bin"]="775@root:administrator"
@@ -350,14 +355,17 @@ function fix_permissions() {
         CHMOD=${PERM[0]}
         CHOWN=${PERM[1]}
 
-        chmod -Rv "${CHMOD}" "${PATH}" || return 1
-        chown -Rv "${CHOWN}" "${PATH}" || return 1
+
+
+        # chmod -Rv "${CHMOD}" "${PATH}" || return 1
+        # chown -Rv "${CHOWN}" "${PATH}" || return 1
     done
 
     return 0
 }
 
 function install_vars() {
+
 read -r -d '' INSTALL_VARS <<EOF
 declare -r USYS_VOLUME=${USYS_VOLUME}
 declare -r USYS_TARGET=${USYS_TARGET}
@@ -381,11 +389,13 @@ function download() {
     umask 022
 
     fecho "Downloading usystem ..."
-    if wget -L "${USYSTEM_REPO_URL}/archive/main.tar.gz" -O "${USYS_REPO_ARCHIVE}" -o "${LOG}" > /dev/null 2>&1; then
+    if wget -L "${USYS_REPO_URL}/archive/main.tar.gz" -O "${USYS_REPO_ARCHIVE}" -o "${LOG}" > /dev/null 2>&1; then
         ok
     else
-        fail ERROR "Failed to download usystem; see log: ${LOG}" && exit 1
+        fail ERROR "Failed to download usystem; see log: ${LOG}"
     fi
+
+    return 0
 }
 
 function install_archive() {
@@ -417,17 +427,17 @@ function install_archive() {
         fi
 
         # Now copy the usystem to the its final destination
-        if mv -v "${USYS_TARGET}/install/usystem" "${USYS_ROOT}" >> "${LOG}"; then
+        if mv -v "${USYS_TARGET}"/install/usystem/* "${USYS_ROOT}" >> "${LOG}" 2>&1; then
             fail ERROR "Failed to move usystem; see log: ${LOG}" && exit 1
         fi
 
         # Copy LICENSE to USYS_TARGET
-        if mv -v "${USYS_TARGET}/install/LICENSE" "${USYS_TARGET}/LICENSE" >> "${LOG}"; then
+        if mv -v "${USYS_TARGET}/install/LICENSE" "${USYS_TARGET}/LICENSE" >> "${LOG}" 2>&1; then
             fail ERROR "Failed to move LICENSE; see log: ${LOG}" && exit 1
         fi
 
         # Remove install folder, to make sure we cleanup after ourselfs
-        rm -rf "${USYS_TARGET}/install"
+        rm -rf "${USYS_TARGET}/install" >> "${LOG}" 2>&1
 
         # Fix permissions of file/folders
         if ! fix_permissions; then
@@ -450,6 +460,7 @@ function install_config() {
     local -r FORCE_CONFIG="${1}"
     local -r MSG="${2}"
 
+    # shellcheck disable=SC1009,SC1072,SC1073
     if [ ! -f "${USYS_CONFIG}" ] || is_enabled "${FORCE_CONFIG}"; then
         fecho "${MSG} config ..."
         if cp "${USYS_CONFIG_DIR}/default/usystem.conf" "${USYS_CONFIG}"; then
@@ -489,9 +500,9 @@ function install_rc() {
 #===============================================================================
 function install() {
     # Install Variables
-    local FORCE=false
-    local FORCE_CONFIG=false
-    local LOCAL_INSTALL=false
+    local FORCE=${FORCE:-false}
+    local FORCE_CONFIG=${FORCE_CONFIG:-false}
+    local LOCAL_INSTALL="false"
 
     # Options array for calling the repair function after install
     local CMD_REPAIR_OPTS=("--install")
@@ -552,6 +563,7 @@ function install() {
     # Verify that the root directory does not exist
     # If it exists, inform the user to use the 'upgrade' command
     # This check can be overridden with '--force'
+    # shellcheck disable=SC1009,SC1072,SC1073
     if [ -d "${USYS_ROOT}" ] && ! is_enabled "${FORCE}"; then
         log ERROR "${USYS_ROOT} exist; please use '${CLI_NAME} upgrade'"
         exit 1
@@ -590,7 +602,7 @@ function install() {
 }
 
 function repair() {
-    local FORCE_CONFIG=false
+    local FORCE_CONFIG="${FORCE_CONFIG:-false}"
     local CONTEXT_MSG="Repairing"
     local CONTEXT_CFG="${CONTEXT_MSG}"
 
