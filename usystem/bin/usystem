@@ -563,7 +563,7 @@ function install() {
 
     # Check if we are performing a local install
     # if not then remove possible present downloaded archive
-    if is_enabled "${LOCAL_INSTALL}"; then
+    if ! is_enabled "${LOCAL_INSTALL}"; then
         rm -f "${USYS_REPO_ARCHIVE}"
 
         # set download log; because we might never be installed, write the
