@@ -350,6 +350,10 @@ function fail() {
     fresult FAILED "${LVL}" "${MSG}"
 }
 
+function log_file() {
+    echo "${USYS_TARGET}/${CLI_NAME}.${FUNCNAME[1]}.${CLI_EXEC_DT}.log"
+}
+
 function umount() {
     # unmount /usys/tmp
     if grep ' /usys/tmp ' /proc/mounts > /dev/null 2>&1; then
@@ -425,6 +429,7 @@ function install_vars() {
     # Make sure we start with a clean environment
     rm -f "${USYS_TARGET}/VARS.env"
 
+    # Define install variables
     cat > "${USYS_TARGET}/VARS.env" <<EOF
 declare -r CLI_NAME=${CLI_NAME}
 declare -r USYS_BIND_DIR=${USYS_BIND_DIR}
@@ -447,19 +452,19 @@ EOF
     sed -i "/+++INSTALL_VARS+++/ {
         r ${USYS_TARGET}/VARS.env
         d
-    }" "${USYS_CONFIG_DIR}/default/usystem.conf"
+    }" "${USYS_CONFIG_DIR}/default/rc.local"
     # shellcheck disable=SC2016
     sed -i "/+++INSTALL_VARS+++/ {
         r ${USYS_TARGET}/VARS.env
         d
-    }" "${USYS_CONFIG_DIR}/default/usystem.conf"
+    }" "${USYS_CONFIG_DIR}/default/rc.usystem"
 
     # Cleanup temporary install files
     rm -f "${USYS_TARGET}/VARS.env"
 }
 
 function download() {
-    local -r LOG="${USYS_TARGET}/${CLI_NAME}.download.${CLI_EXEC_DT}.log"
+    local -r LOG=$(log_file)
 
     # Set umask
     umask 022
@@ -579,7 +584,7 @@ function install() {
     local FORCE="${FORCE:-false}"
     local FORCE_CONFIG="${FORCE_CONFIG:-false}"
     local LOCAL_INSTALL=false
-    local LOG="${USYS_TARGET}/${CLI_NAME}.install.${CLI_EXEC_DT}.log"
+    local LOG=$(log_file)
 
     # Options array for calling the repair function after install
     local CMD_REPAIR_OPTS=("--install")
@@ -625,8 +630,6 @@ function install() {
 
     # Check if we are running as root
     is_root "${FUNCNAME[0]}"
-
-    log NONE "${CLI_NAME} ${FUNCNAME[0]}"
 
     # Verify the volume path exists
     exists "${USYS_VOLUME}" || ( log ERROR "Volume: '${USYS_VOLUME}' does not exists" && exit 1 )
@@ -688,11 +691,10 @@ function install() {
 }
 
 function repair() {
+    local LOG=$(log_file)
     local FORCE_CONFIG="${FORCE_CONFIG:-false}"
     local CONTEXT_MSG="Repairing"
     local CONTEXT_CFG="${CONTEXT_MSG}"
-
-    log NONE "${CLI_NAME} ${FUNCNAME[0]}"
 
     # Parse Install Options
     while [ ${#} -gt 0 ]; do
@@ -727,7 +729,7 @@ function repair() {
 
     # Fix permissions
     fecho "Repairing permissions ..."
-    if fix_permissions; then
+    if fix_permissions "${LOG}"; then
         ok
     else
         fail ERROR "Failed to repair permissions" && exit 1
@@ -758,9 +760,6 @@ function repair() {
 function link() {
     # Check if we are running as root
     is_root "${FUNCNAME[0]}"
-
-    # Print command we are executing
-    log NONE "${CLI_NAME} ${FUNCNAME[0]}"
 }
 
 #===============================================================================
