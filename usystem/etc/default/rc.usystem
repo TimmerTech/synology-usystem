@@ -1,44 +1,95 @@
-#!/bin/sh
+#!/usr/bin/env bash
+# shellcheck disable=SC3040,SC3041
+#===============================================================================
+# WARNING: DO NOT EXIT
+#
+# IF YOU NEED ADDITONAL CHANGES BEYOND PLEASE SUBMIT A MERGE REQUEST.
+# THIS FILE MIGHT BE OVERRIDEN WHEN YOU UPDATE USYSTEM.
+#
+# URL: https://github.com/timmertech/synology-usystem
+#
+# If you need additional Run Commands; place your own run commands in
+# /usys/etc/rc.d and they will automatically be loaded.
+#
+#===============================================================================
+# bash strict mode
+set -T # inherit DEBUG and RETURN trap for functions
+set -C # prevent file overwrite by > &> <>
+set -E # inherit -e
+set -e # exit immediately on errors
+set -u # exit on not assigned variables
+set -o pipefail # exit on pipe failure
 
+
+#===============================================================================
+# USYSTEM Global Variables
+#===============================================================================
 +++INSTALL_VARS+++
 
-if test -z "${USYSTEM_DIR}"; then
-    USYSTEM_DIR=/volume1/@usystem/usystem
-fi
 
-case "$1" in
-    start)
-        echo "Starting usystem"
-        if test -n "${USYSTEM_DIR}"; then
-            if ! grep ' /usys ' /proc/mounts > /dev/null 2>&1; then
-                # Mount user system
-                if [ ! -d /usys ]; then
-                    mkdir -p /usys
-                    chmod 755 /usys
-                fi
-                mount -o bind "${USYSTEM_DIR}" /usys
+#===============================================================================
+# USYSTEM RC Functions
+#===============================================================================
+function umount() {
+    # unmount /usys/tmp
+    if grep " ${USYS_TMP_DIR} " /proc/mounts > /dev/null 2>&1; then
+        umount "${USYS_TMP_DIR}" || true
+    fi
 
-                # Mount tmpfs to usys, so that we do not clutter the OS
-                # and there is only a single tmpfs in use
-                if [ ! -d /usys/tmp ]; then
-                    mkdir -p /usys/tmp
-                fi
-                mount -o bind /tmp /usys/tmp
+    # umount /usys
+    if grep " ${USYS_BIND_DIR} " /proc/mounts > /dev/null 2>&1; then
+        umount "${USYS_BIND_DIR}" || true
+    fi
+}
 
-                # Add usystem profile to environment
-                if grep -qF '. /usys/etc/profile' /etc/profile; then
-                    echo "Synology User System: Enabled"
-                else
-                    echo "Synology User System: Updating; /etc/profile"
+function mount() {
+    # mount /usys
+    if ! grep " ${USYS_BIND_DIR} " /proc/mounts > /dev/null 2>&1; then
+        # Mount user system
+        if [ ! -d /usys ]; then
+            mkdir -p "${USYS_BIND_DIR}"
+            chmod 775 "${USYS_BIND_DIR}"
+            chown root:administrators "${USYS_BIND_DIR}"
+        fi
+        mount -o bind "${USYS_ROOT}" "${USYS_BIND_DIR}"
+    fi
+
+    if ! grep " ${USYS_TMP_DIR} " /proc/mounts > /dev/null 2>&1; then
+        # Mount tmpfs to usys, so that we do not clutter the OS
+        # and there is only a single tmpfs in use
+        if [ ! -d "${USYS_TMP_DIR}" ]; then
+            mkdir -p "${USYS_TMP_DIR}"
+        fi
+        mount -o bind /tmp "${USYS_TMP_DIR}"
+    fi
+}
+
+function link_profile() {
+    # Add usystem profile to environment
+    if grep -qF ". ${USYS_BIND_DIR}/etc/profile" /etc/profile; then
+        echo "Synology User System: Enabled"
+    else
+        echo "Synology User System: Updating; /etc/profile"
 cat >> /etc/profile <<"EOF"
 
 # Loading Synology User System
-if [ -r /usys/etc/profile ] && bash -n /usys/etc/profile; then
-    . /usys/etc/profile
+if [ -r ${USYS_BIND_DIR}/etc/profile ] && bash -n ${USYS_BIND_DIR}/etc/profile; then
+    . ${USYS_BIND_DIR}/etc/profile
 fi
 EOF
-                fi
-            fi
+    fi
+}
+
+
+#===============================================================================
+# USYSTEM RC MAIN
+#===============================================================================
+case "$1" in
+    start)
+        echo "Starting usystem"
+        if test -n "${USYS_ROOT}"; then
+            mount
+            link_profile
         fi
     ;;
     reconfig)
@@ -46,6 +97,7 @@ EOF
     ;;
     stop)
         echo "Shutting down usystem"
+        umount
         true
     ;;
     *)

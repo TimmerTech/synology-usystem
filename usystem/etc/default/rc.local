@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
-################################################################################
+# shellcheck disable=SC3040,SC3041
+#===============================================================================
 # WARNING: DO NOT EXIT
 #
 # IF YOU NEED ADDITONAL CHANGES BEYOND PLEASE SUBMIT A MERGE REQUEST.
-# THIS FILE WILL GET OVERRIDEN WHEN YOU UPDATE USYSTEM.
+# THIS FILE MIGHT BE OVERRIDEN WHEN YOU UPDATE USYSTEM.
 #
 # URL: https://github.com/timmertech/synology-usystem
 #
-################################################################################
-
-
+# If you need additional Run Commands; place your own run commands in
+# /usys/etc/rc.d and they will automatically be loaded.
+#
+#===============================================================================
 # bash strict mode
 set -T # inherit DEBUG and RETURN trap for functions
 set -C # prevent file overwrite by > &> <>
@@ -19,19 +21,21 @@ set -u # exit on not assigned variables
 set -o pipefail # exit on pipe failure
 
 
-################################################################################
-# global variables
-################################################################################
-declare -r USYS_DIR=/usys
+#===============================================================================
+# USYSTEM Global Variables
+#===============================================================================
 +++INSTALL_VARS+++
 
 
+#===============================================================================
+# LOCAL RC
+#===============================================================================
 # Mount Synology User System
-if [ -f /etc/rc.usystem ] && [ -x /etc/rc.usystem ]; then
-    /etc/rc.usystem start
+if [ -f "/etc/rc.${CLI_NAME}" ] && [ -x "/etc/rc.${CLI_NAME}" ]; then
+    "/etc/rc.${CLI_NAME}" start
 
     # Load all additional scripts from /usys/etc/rc.d
-    for RC in "${USYS_DIR}"/etc/rc.d/rc.*; do
+    for RC in "${USYS_BIND_DIR}"/etc/rc.d/rc.*; do
         if [ -f "${RC}" ]; then
             # Test for syntax errors
             if bash -n "${RC}"; then

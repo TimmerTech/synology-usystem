@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#shellcheck disable=SC2155
+#shellcheck disable=SC2155,SC3040,SC3041
 # SC2155: Declare and assign separately to avoid masking return values
 #===============================================================================
 # IMPLEMENTATION
@@ -10,11 +10,14 @@
 #%    license:        MIT
 #%
 #% ENVIRONMENT
+#%    name:           ${CLI_NAME}
+#%    bind:           ${USYS_BIND_DIR}
 #%    volume:         ${USYS_VOLUME}
 #%    target:         ${USYS_TARGET}
 #%    root:           ${USYS_ROOT}
 #%    backup:         ${USYS_BACKUP_DIR}
 #%    config          ${USYS_CONFIG_DIR}
+#%    config file:    ${USYS_CONFIG}
 #%    log:            ${USYS_LOG_DIR}
 #%    tmp:            ${USYS_TMP_DIR}
 #%
@@ -48,9 +51,9 @@
 #%    information of a particular command.
 #%
 #% EXAMPLES
-#%    usystem repair
-#%    usystem link
-#%    usystem install
+#%    ${CLI_NAME} repair
+#%    ${CLI_NAME} link
+#%    ${CLI_NAME} install
 #%
 #===============================================================================
 # USAGE_END
@@ -66,19 +69,25 @@
 #% OPTIONS
 #%    -f, --force           Forced install, will override any safety measure.
 #%                          A forced install will only create the config if not
-#%                          present. [FORCE]
-#%        --force-config    Override config with new config, without this option
-#%                          a forced install will keep a previous config intact. [FORCE_CONFIG]
-#%    -v, --volume          Set volume to install to; (default /volume1) [USYS_VOLUME]
+#%                          present. (default false) [FORCE]
+#%        --force-config    Override config with default config, without this option
+#%                          a forced install will keep a previous config intact.
+#%                          (default false) [FORCE_CONFIG]
+#%        --cli-name        Will set the name of the cli command, this will propagate to the target directory,
+#%                          root directory and config file name. This will allow multiple installations.
+#%                          (default usystem) [CLI_NAME]
+#%    -b, --bind-dir        Directory in root where the usystem will be bound (default /usys) [USYS_BIND_DIR]
+#%    -v, --volume          Set volume to install to (default /volume1) [USYS_VOLUME]
 #%    -t, --target-dir      Set target installation directory (default USYS_VOLUME/@usystem) [USYS_TARGET]
 #%    -r, --root-dir        Set root directory (default USYS_TARGET/usystem) [USYS_ROOT]
-#%    -b, --backup-dir      Set backup directory (default USYS_TARGET/backup) [USYS_BACKUP_DIR]
-#%    -c, --config-dir      Set config directory (default USYS_ROOT/etc) [USYS_CONFIG_DIR]
+#%        --backup-dir      Set backup directory (default USYS_TARGET/backup) [USYS_BACKUP_DIR]
+#%        --config-dir      Set config directory (default USYS_ROOT/etc) [USYS_CONFIG_DIR]
 #%        --log-dir         Set log direcotory (default USYS_ROOT/log) [USYS_LOG_DIR]
 #%        --local FILE      Install from locally download file.
 #%                          If not provided usystem will be downloaded from repository.
 #%                          This option will not be presisted to usystem.conf after install.
 #%                          (default USYS_ROOT/usystem.tgz) [USYS_REPO_ARCHIVE]
+#%    -h, --help            Show this help
 #%
 #% HELP
 #%    Options can be provided by environment variables defined within brackets [].
@@ -86,16 +95,44 @@
 #===============================================================================
 # INSTALL_END
 #===============================================================================
+# REPAIR
+#===============================================================================
+#% SYNOPSIS
+#+    ${CLI_NAME} repair [OPTIONS...]
+#%
+#% DESCRIPTION
+#%    Repair user system, used after DSM update/upgrade
+#%    The repair will install the required resources for auto-start and
+#%    perform the link of resources.
+#%
+#% OPTIONS
+#%        --force-config    Override config with default config (default false) [FORCE_CONFIG]
+#%    -h, --help            Show this help
+#%
+#===============================================================================
+# REPAIR_END
+#===============================================================================
+# LINK
+#===============================================================================
+#% SYNOPSIS
+#+    ${CLI_NAME} link
+#%
+#% DESCRIPTION
+#%    Link user system resources to DSM
+#%
+#===============================================================================
+# LINK_END
+#===============================================================================
 
 
 #===============================================================================
 # SHELL CONFIG
 #===============================================================================
-set -T # inherit DEBUG and RETURN trap for functions
-set -C # prevent file overwrite by > &> <>
-set -E # inherit -e
-set -e # exit immediately on errors
-set -u # exit on not assigned variables
+set -T          # inherit DEBUG and RETURN trap for functions
+set -C          # prevent file overwrite by > &> <>
+set -E          # inherit -e
+set -e          # exit immediately on errors
+set -u          # exit on not assigned variables
 set -o pipefail # exit on pipe failure
 
 # Define script finish function
@@ -105,40 +142,62 @@ trap 'finish' EXIT
 #===============================================================================
 # GLOBAL VARS
 #===============================================================================
-declare -r CLI_NAME=$(basename "${0}");
-# shellcheck disable=SC2034
-declare -r CLI_VERSION=1.0.0;
-# shellcheck disable=SC2034
-declare -r CLI_DIR="$( cd "$(dirname "$0")" && pwd )";
+# CLI_NAME
+# Name of the CLI command. This can be overriden during install.
+# This will allow multiple installations next to each other.
+# When set during install, the name will be written as readonly variable to the
+# install variable.
+declare     CLI_NAME="${CLI_NAME:-usystem}"
+
+# CLI Version
+declare -r  CLI_VERSION=1.0.0;
+declare -r  CLI_DIR="$( cd "$(dirname "$0")" && pwd )";
 
 # Logging
 #
 # Please note that the log level NONE does not mean 'No Logging'
 # NONE is used for output without a log level
 declare -rA LOG_LEVELS=([NONE]=0 [DEBUG]=1 [INFO]=2 [WARN]=3 [ERROR]=4);
-declare LOG_LEVEL="${LOG_LEVEL:-INFO}";
-declare -r LOG_PFX='%-32s '
+declare -r  LOG_PFX='%-32s '
+declare     LOG_LEVEL="${LOG_LEVEL:-INFO}";
 
 # User System VARS
-declare USYS_VOLUME="${USYS_VOLUME:-/volume1}";
-declare USYS_TARGET="${USYS_TARGET:-"${USYS_VOLUME}/@usystem"}";
-declare USYS_ROOT="${USYS_ROOT:-"${USYS_TARGET}/usystem"}";
-declare USYS_BACKUP_DIR="${USYS_BACKUP_DIR:-${USYS_TARGET}/backup}";
-declare USYS_CONFIG_DIR="${USYS_CONFIG_DIR:-${USYS_ROOT}/etc}";
-declare USYS_LOG_DIR="${USYS_LOG_DIR:-${USYS_ROOT}/log}";
-declare -r USYS_TMP_DIR="${USYS_TMP_DIR:-${USYS_ROOT}/tmp}";
-declare -r USYS_CONFIG="${USYS_CONFIG:-${USYS_CONFIG_DIR}/usystem.conf}"
+declare     USYS_BIND_DIR="${USYS_BIND_DIR:-/usys}"
+declare     USYS_VOLUME="${USYS_VOLUME:-/volume1}";
+declare     USYS_TARGET="${USYS_TARGET:-"${USYS_VOLUME}/@${CLI_NAME}"}";
+declare     USYS_ROOT="${USYS_ROOT:-"${USYS_TARGET}/${CLI_NAME}"}";
+declare     USYS_BACKUP_DIR="${USYS_BACKUP_DIR:-${USYS_TARGET}/backup}";
+declare     USYS_CONFIG_DIR="${USYS_CONFIG_DIR:-${USYS_ROOT}/etc}";
+declare     USYS_LOG_DIR="${USYS_LOG_DIR:-${USYS_ROOT}/log}";
+declare -r  USYS_TMP_DIR="${USYS_TMP_DIR:-${USYS_ROOT}/tmp}";
+declare -r  USYS_CONFIG="${USYS_CONFIG:-${USYS_CONFIG_DIR}/${CLI_NAME}.conf}"
 
 # User System Repository
-declare -r USYS_REPO_URL="${USYS_REPO_URL:-https://github.com/TimmerTech/synology-usystem}";
-declare -r USYS_REPO_ARCHIVE="${USYS_REPO_ARCHIVE:-${USYS_TARGET}/usystem.tgz}";
+declare -r  USYS_REPO_URL="${USYS_REPO_URL:-https://github.com/TimmerTech/synology-usystem}";
+declare -r  USYS_REPO_ARCHIVE="${USYS_REPO_ARCHIVE:-${USYS_TARGET}/${CLI_NAME}.tgz}";
 
 # CLI Exec Date/Time
-declare -r CLI_EXEC_DT="$(date +'%Y%m%d-%H%M%S')";
+declare -r  CLI_EXEC_DT="$(date +'%Y%m%d-%H%M%S')";
 
 # Install Variables
-declare FORCE=false
-declare FORCE_CONFIG=false
+declare     FORCE=false
+declare     FORCE_CONFIG=false
+
+# We will now load the config from the installed location the usystem.conf.
+# The configuration will be loaded relative to this script.
+# For saftey reasons the variables set during the install phase
+# are written to the config as readonly variables.
+# This is to ensure that we do not make mistakes. Because during initial install
+# the configuration does not exists therefor the variables in the configuration
+# marked as readonly are not an issue. This does also provide a secondary benefit.
+# When a re-install is preformed, the user can reinstall over the current install
+# because the configuration will lock the install variables.
+if [[ -t 1 ]]; then
+    if [ -f "${CLI_DIR}/../etc/${CLI_NAME}.conf" ]; then
+        # shellcheck source=../etc/default/usystem.conf
+        source "${CLI_DIR}/../etc/${CLI_NAME}.conf"
+    fi
+fi
 
 
 #===============================================================================
@@ -363,33 +422,44 @@ function fix_permissions() {
 
 function install_vars() {
 
+    # Make sure we start with a clean environment
     rm -f "${USYS_TARGET}/VARS.env"
 
     cat > "${USYS_TARGET}/VARS.env" <<EOF
+declare -r CLI_NAME=${CLI_NAME}
+declare -r USYS_BIND_DIR=${USYS_BIND_DIR}
 declare -r USYS_VOLUME=${USYS_VOLUME}
 declare -r USYS_TARGET=${USYS_TARGET}
 declare -r USYS_ROOT=${USYS_ROOT}
 declare -r USYS_BACKUP_DIR=${USYS_BACKUP_DIR}
 declare -r USYS_CONFIG_DIR=${USYS_CONFIG_DIR}
 declare -r USYS_LOG_DIR=${USYS_LOG_DIR}
+declare -r USYS_TMP_DIR=${USYS_TMP_DIR}
 EOF
 
     # Install Variables in files
     # shellcheck disable=SC2016
-    sed -i -e '/+++INSTALL_VARS+++/ {
-        r $USYS_TARGET/VARS.env
+    sed -i "/+++INSTALL_VARS+++/ {
+        r ${USYS_TARGET}/VARS.env
         d
-    }' "${USYS_CONFIG_DIR}/default/usystem.conf"
+    }" "${USYS_CONFIG_DIR}/default/usystem.conf"
+    # shellcheck disable=SC2016
+    sed -i "/+++INSTALL_VARS+++/ {
+        r ${USYS_TARGET}/VARS.env
+        d
+    }" "${USYS_CONFIG_DIR}/default/usystem.conf"
+    # shellcheck disable=SC2016
+    sed -i "/+++INSTALL_VARS+++/ {
+        r ${USYS_TARGET}/VARS.env
+        d
+    }" "${USYS_CONFIG_DIR}/default/usystem.conf"
 
-    #sed -i "s/+++INSTALL_VARS+++/$INSTALL_VARS/" "${USYS_CONFIG}/default/usystem.conf"
-    # sed -i "s|+++INSTALL_VARS+++|${INSTALL_VARS}|g" "${USYS_CONFIG_DIR}/default/rc.local"
-    # sed -i "s|+++INSTALL_VARS+++|${INSTALL_VARS}|g" "${USYS_CONFIG_DIR}/default/rc.usystem"
-
-    # Cleanup INSTALL_VARS Temporary File
+    # Cleanup temporary install files
+    rm -f "${USYS_TARGET}/VARS.env"
 }
 
 function download() {
-    local -r LOG="${USYS_TARGET}/usystem.download.${CLI_EXEC_DT}.log"
+    local -r LOG="${USYS_TARGET}/${CLI_NAME}.download.${CLI_EXEC_DT}.log"
 
     # Set umask
     umask 022
@@ -433,7 +503,7 @@ function install_archive() {
         fi
 
         # Now copy the usystem to the its final destination
-        if ! cp -rav "${USYS_TARGET}"/install/usystem/* "${USYS_ROOT}" >> "${LOG}" 2>&1; then
+        if ! cp -rav "${USYS_TARGET}/install/${CLI_NAME}"/* "${USYS_ROOT}" >> "${LOG}" 2>&1; then
             fail ERROR "Failed to move usystem; see log: ${LOG}" && exit 1
         fi
 
@@ -481,10 +551,10 @@ function install_rc() {
     local -r MSG="${1}"
 
     fecho "${MSG} rc.usystem ..."
-    if cp "${USYS_CONFIG_DIR}/default/rc.usystem" /etc; then
+    if cp "${USYS_CONFIG_DIR}/default/rc.${CLI_NAME}" /etc; then
         ok
     else
-        fail ERROR "Failed to install rc.usystem" && exit 1
+        fail ERROR "Failed to install rc.${CLI_NAME}" && exit 1
     fi
 
     fecho "${MSG} rc.local ..."
@@ -500,11 +570,16 @@ function install_rc() {
 # COMMANDS
 #===============================================================================
 function install() {
+    # Print header because we also provide online install
+    printf '%s\n' "Synology User System"
+    printf '%s\n\n' "Version: ${CLI_VERSION}"
+    printf '%s\n\n' "For more information visit: https://www.timmertech.io"
+
     # Install Variables
-    local FORCE=${FORCE:-false}
-    local FORCE_CONFIG=${FORCE_CONFIG:-false}
-    local LOCAL_INSTALL="false"
-    local LOG="${USYS_TARGET}/usystem.install.${CLI_EXEC_DT}.log"
+    local FORCE="${FORCE:-false}"
+    local FORCE_CONFIG="${FORCE_CONFIG:-false}"
+    local LOCAL_INSTALL=false
+    local LOG="${USYS_TARGET}/${CLI_NAME}.install.${CLI_EXEC_DT}.log"
 
     # Options array for calling the repair function after install
     local CMD_REPAIR_OPTS=("--install")
@@ -517,13 +592,15 @@ function install() {
             ;;
 
             -f | --force)       FORCE=true;                 readonly FORCE;             shift 1 ;;
-            -v | --volume)      USYS_VOLUME="${1}";         readonly USYS_VOLUME;       shift 1 ;;
-            -t | --target-dir)  USYS_TARGET="${1}";         readonly USYS_TARGET;       shift 1 ;;
-            -r | --root-dir)    USYS_ROOT="${1}";           readonly USYS_ROOT;         shift 1 ;;
-            -b | --backup-dir)  USYS_BACKUP_DIR="${1}";     readonly USYS_BACKUP_DIR;   shift 1 ;;
-            -c | --config-dir)  USYS_CONFIG_DIR="${1}";     readonly USYS_CONFIG_DIR;   shift 1 ;;
+            -b,| --bind-dir)    USYS_BIND_DIR="${1}";       readonly USYS_BIND_DIR;     shift 2 ;;
+            -v | --volume)      USYS_VOLUME="${1}";         readonly USYS_VOLUME;       shift 2 ;;
+            -t | --target-dir)  USYS_TARGET="${1}";         readonly USYS_TARGET;       shift 2 ;;
+            -r | --root-dir)    USYS_ROOT="${1}";           readonly USYS_ROOT;         shift 2 ;;
 
-            --log-dir)          USYS_LOG_DIR="${1}";        readonly USYS_LOG_DIR;      shift 1 ;;
+            --cli-name)         CLI_NAME="${1}"             readonly CLI_NAME;          shift 2 ;;
+            --backup-dir)       USYS_BACKUP_DIR="${1}";     readonly USYS_BACKUP_DIR;   shift 2 ;;
+            --config-dir)       USYS_CONFIG_DIR="${1}";     readonly USYS_CONFIG_DIR;   shift 2 ;;
+            --log-dir)          USYS_LOG_DIR="${1}";        readonly USYS_LOG_DIR;      shift 2 ;;
             --force-config)
                 FORCE_CONFIG=true;
                 readonly FORCE_CONFIG;
@@ -548,6 +625,8 @@ function install() {
 
     # Check if we are running as root
     is_root "${FUNCNAME[0]}"
+
+    log NONE "${CLI_NAME} ${FUNCNAME[0]}"
 
     # Verify the volume path exists
     exists "${USYS_VOLUME}" || ( log ERROR "Volume: '${USYS_VOLUME}' does not exists" && exit 1 )
@@ -605,13 +684,15 @@ function install() {
     install_vars
 
     # Call repair user system, to finish the installation
-    #repair "${CMD_REPAIR_OPTS[@]}"
+    repair "${CMD_REPAIR_OPTS[@]}"
 }
 
 function repair() {
     local FORCE_CONFIG="${FORCE_CONFIG:-false}"
     local CONTEXT_MSG="Repairing"
     local CONTEXT_CFG="${CONTEXT_MSG}"
+
+    log NONE "${CLI_NAME} ${FUNCNAME[0]}"
 
     # Parse Install Options
     while [ ${#} -gt 0 ]; do
@@ -663,18 +744,23 @@ function repair() {
     # The reason we are starting from rc.local is that rc.local after it starts
     # starts all user configured rc.d/* because we might be performing a forced
     # install and overwrite an existing installation
-    #/etc/rc.local
+    /etc/rc.local
 
     # Repair completed, now link/re-link all usystem resources back to the OS
     # This will a user to only issue the repair command after a DSM upgrade to
     # completely restore everything
     #
     # Link user system resources to OS
-    #link "$@"
+    echo "\$@:" "$@"
+    link "$@"
 }
 
 function link() {
-    :
+    # Check if we are running as root
+    is_root "${FUNCNAME[0]}"
+
+    # Print command we are executing
+    log NONE "${CLI_NAME} ${FUNCNAME[0]}"
 }
 
 #===============================================================================
