@@ -365,7 +365,8 @@ function install_vars() {
 
     rm -f "${USYS_TARGET}/VARS.env"
 
-    INSTALL_VARS=$(cat > "${USYS_TARGET}/VARS.env" <<EOF
+    $
+    cat > "${USYS_TARGET}/VARS.env" <<EOF
 declare -r USYS_VOLUME=${USYS_VOLUME}
 declare -r USYS_TARGET=${USYS_TARGET}
 declare -r USYS_ROOT=${USYS_ROOT}
@@ -373,9 +374,9 @@ declare -r USYS_BACKUP_DIR=${USYS_BACKUP_DIR}
 declare -r USYS_CONFIG_DIR=${USYS_CONFIG_DIR}
 declare -r USYS_LOG_DIR=${USYS_LOG_DIR}
 EOF
-)
 
     # Install Variables in files
+    # shellcheck disable=SC2016
     sed -i -e '/+++INSTALL_VARS+++/ {
         r $USYS_TARGET/VARS.env
         d
