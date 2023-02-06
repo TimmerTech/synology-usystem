@@ -421,6 +421,8 @@ function install_archive() {
 
         # Install OK
         ok
+    else
+        fail ERROR "failed to install archive"
     fi
 }
 
