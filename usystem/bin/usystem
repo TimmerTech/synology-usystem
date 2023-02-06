@@ -384,6 +384,8 @@ EOF
     #sed -i "s/+++INSTALL_VARS+++/$INSTALL_VARS/" "${USYS_CONFIG}/default/usystem.conf"
     # sed -i "s|+++INSTALL_VARS+++|${INSTALL_VARS}|g" "${USYS_CONFIG_DIR}/default/rc.local"
     # sed -i "s|+++INSTALL_VARS+++|${INSTALL_VARS}|g" "${USYS_CONFIG_DIR}/default/rc.usystem"
+
+    # Cleanup INSTALL_VARS Temporary File
 }
 
 function download() {
@@ -723,5 +725,4 @@ function main() {
     esac
 }
 
-# main "$@";
-#install_vars
+main "$@";
