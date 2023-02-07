@@ -556,7 +556,7 @@ function generate_vars() {
     rm -f "${VARS}"
 
     # Define install variables
-    cat > "${VARS}" <<EOF
+    cat >| "${VARS}" <<EOF
 declare CLI_NAME=${CLI_NAME}
 declare USYS_BIND_DIR=${USYS_BIND_DIR}
 declare USYS_VOLUME=${USYS_VOLUME}
