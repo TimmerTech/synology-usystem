@@ -123,6 +123,8 @@
 #% OPTIONS
 #%        --force-config    Override config with default config
 #%                          (default false) [FORCE_CONFIG]
+#%        --force-profile   Override profile with default profile
+#%                          (default false) [FORCE_PROFILE]
 #%    -h, --help            Show this help
 #%
 #===============================================================================
