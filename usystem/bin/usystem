@@ -343,16 +343,6 @@ function is_root() {
     fi
 }
 
-function exists() {
-    local -r PATH="${1}"
-
-    if [ -e "${PATH}" ]; then
-        return 0
-    else
-        return 1
-    fi
-}
-
 ## Check if enabled
 # $1 parameter to Check
 #
@@ -811,7 +801,10 @@ function install() {
     printf '%s\n\n' "For more information visit: https://www.timmertech.io"
 
     # Verify the volume path exists
-    exists "${USYS_VOLUME}" || ( log ERROR "Volume: '${USYS_VOLUME}' does not exists" && exit 1 )
+    if [ ! -e "${USYS_VOLUME}" ]; then
+        log ERROR "Volume: '${USYS_VOLUME}' does not exists"
+        exit 1
+    fi
 
     # Create target directory on volume
     if [ ! -d "${USYS_TARGET}" ]; then
