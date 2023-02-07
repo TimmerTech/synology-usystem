@@ -578,7 +578,7 @@ function install() {
     # Options array for calling the repair function after install
     local CMD_REPAIR_OPTS=("--install")
 
-    # Parse Install Options
+    # Parse options
     while [ ${#} -gt 0 ]; do
         case $1 in
             -h | --help | help)
@@ -643,7 +643,7 @@ function install() {
     fi
 
     # Because we have the option '--force' to perform a forced install
-    # we must unmount the usystem if it exists.
+    # we must unmount the usystem if we are dealing with an override.
     umount_usystem
 
     # Check if we are performing a local install
@@ -685,7 +685,7 @@ function repair() {
     local CONTEXT_MSG="Repairing"
     local CONTEXT_CFG="${CONTEXT_MSG}"
 
-    # Parse Install Options
+    # Parse options
     while [ ${#} -gt 0 ]; do
         case $1 in
             -h | --help | help)
