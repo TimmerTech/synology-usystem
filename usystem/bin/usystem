@@ -139,6 +139,7 @@
 #%    BACKUP_KEEP_LAST can be provided in the ${CLI_NAME}.conf.
 #%
 #% OPTIONS
+#%        --clean               Cleanup backups after creation
 #%        --backup-retain N     Retain this number of backups.
 #%                              (default 30) [BACKUP_RETAIN]
 #%    -h, --help                Show this help
@@ -919,12 +920,17 @@ function link() {
 function backup() {
     local BACKUP_RETAIN="${BACKUP_RETAIN:-30}"
     local -r LOG=$(log_file)
+    local CLEAN=false
 
     # Parse options
     while [ ${#} -gt 0 ]; do
         case $1 in
             -h | --help | help)
                 scriptinfo 0 backup
+            ;;
+            --clean)
+                CLEAN=true
+                shift 1
             ;;
             --backup-retain)
                 BACKUP_RETAIN="${1}"
@@ -949,7 +955,9 @@ function backup() {
     fi
 
     # Cleanup backups
-    backup_clean "${BACKUP_RETAIN}"
+    if is_enabled "${CLEAN}"; then
+        backup_clean "${BACKUP_RETAIN}"
+    fi
 }
 
 
