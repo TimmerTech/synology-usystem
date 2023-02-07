@@ -72,7 +72,11 @@
 #%                          present. (default false) [FORCE]
 #%        --force-config    Override config with default config, without this option
 #%                          a forced install will keep a previous config intact.
+#%                          This will override the config with the newly shipped config.
 #%                          (default false) [FORCE_CONFIG]
+#%        --force-profile   Override profile with default profile, without this option
+#%                          a forced install will keep a previous profile intact.
+#%                          This will override the profile with the newly shipped profile. [FORCE_PROFILE]
 #%        --cli-name        Will set the name of the cli command, this will propagate to the target directory,
 #%                          root directory and config file name. This will allow multiple installations.
 #%                          (default usystem) [CLI_NAME]
@@ -183,6 +187,7 @@ declare -r  CLI_EXEC_DT="$(date +'%Y%m%d-%H%M%S')";
 # Install Variables
 declare     FORCE=false
 declare     FORCE_CONFIG=false
+declare     FORCE_PROFILE=false
 
 # We will now load the config from the installed location the usystem.conf.
 # The configuration will be loaded relative to this script.
@@ -428,26 +433,19 @@ declare -r USYS_TARGET=${USYS_TARGET}
 declare -r USYS_ROOT=${USYS_ROOT}
 declare -r USYS_BACKUP_DIR=${USYS_BACKUP_DIR}
 declare -r USYS_CONFIG_DIR=${USYS_CONFIG_DIR}
+declare -r USYS_CONFIG=${USYS_CONFIG}
 declare -r USYS_LOG_DIR=${USYS_LOG_DIR}
 declare -r USYS_TMP_DIR=${USYS_TMP_DIR}
 EOF
 
-    # Install Variables in files
-    # shellcheck disable=SC2016
-    sed -i "/+++INSTALL_VARS+++/ {
-        r ${USYS_TARGET}/VARS.env
-        d
-    }" "${USYS_CONFIG_DIR}/default/usystem.conf"
-    # shellcheck disable=SC2016
-    sed -i "/+++INSTALL_VARS+++/ {
-        r ${USYS_TARGET}/VARS.env
-        d
-    }" "${USYS_CONFIG_DIR}/default/rc.local"
-    # shellcheck disable=SC2016
-    sed -i "/+++INSTALL_VARS+++/ {
-        r ${USYS_TARGET}/VARS.env
-        d
-    }" "${USYS_CONFIG_DIR}/default/rc.usystem"
+    for FILE in "${USYS_CONFIG_DIR}/default"/*; do
+        # Install Variables in files
+        # shellcheck disable=SC2016
+        sed -i "/+++INSTALL_VARS+++/ {
+            r ${USYS_TARGET}/VARS.env
+            d
+        }" "${FILE}"
+    done
 
     # Cleanup temporary install files
     rm -f "${USYS_TARGET}/VARS.env"
@@ -533,6 +531,26 @@ function install_config() {
             fresult OK
         else
             fresult ERROR "Failed to install config"
+        fi
+    fi
+}
+
+# install_profile
+#
+# Because we are calling this from the 'install' and 'repair' command
+# we want to be able to show the correct message to the user
+# therefor this function accepts a MSG as a parameter for this usecase
+function install_profile() {
+    local -r FORCE_PROFILE="${1}"
+    local -r MSG="${2}"
+
+    # shellcheck disable=SC1009,SC1072,SC1073
+    if [ ! -f "${USYS_CONFIG_DIR}/profile" ] || is_enabled "${FORCE_PROFILE}"; then
+        fecho "${MSG} profile ..."
+        if cp "${USYS_CONFIG_DIR}/default/profile" "${USYS_CONFIG_DIR}/profile"; then
+            fresult OK
+        else
+            fresult ERROR "Failed to install profile"
         fi
     fi
 }
@@ -648,6 +666,7 @@ function install() {
     # Install Variables
     local FORCE="${FORCE:-false}"
     local FORCE_CONFIG="${FORCE_CONFIG:-false}"
+    local FORCE_PROFILE="${FORCE_PROFILE:-false}"
     local LOCAL_INSTALL=false
     local -r LOG=$(log_file)
 
@@ -672,11 +691,19 @@ function install() {
             --config-dir)       USYS_CONFIG_DIR="${1}";     readonly USYS_CONFIG_DIR;   shift 2 ;;
             --log-dir)          USYS_LOG_DIR="${1}";        readonly USYS_LOG_DIR;      shift 2 ;;
             --force-config)
-                FORCE_CONFIG=true;
-                readonly FORCE_CONFIG;
+                FORCE_CONFIG=true
+                readonly FORCE_CONFIG
 
                 # Add option to repair command
                 CMD_REPAIR_OPTS+=("--force-config")
+                shift 1
+            ;;
+            --force-profile)
+                FORCE_PROFILE=true
+                readonly FORCE_PROFILE
+
+                # Add option to repair command
+                CMD_REPAIR_OPTS+=("--force-profile")
                 shift 1
             ;;
             --local)
@@ -758,8 +785,9 @@ function install() {
 function repair() {
     local -r LOG=$(log_file)
     local FORCE_CONFIG="${FORCE_CONFIG:-false}"
+    local FORCE_PROFILE="${FORCE_PROFILE:-false}"
     local CONTEXT_MSG="Repairing"
-    local CONTEXT_CFG="${CONTEXT_MSG}"
+    local CONTEXT_MSG_FORCE="${CONTEXT_MSG}"
 
     # Parse options
     while [ ${#} -gt 0 ]; do
@@ -778,7 +806,13 @@ function repair() {
 
             --force-config)
                 FORCE_CONFIG=true; readonly FORCE_CONFIG;
-                CONTEXT_CFG="Override"
+                CONTEXT_MSG_FORCE="Override"
+                shift 1
+            ;;
+
+            --force-profile)
+                FORCE_PROFILE=true; readonly FORCE_PROFILE;
+                CONTEXT_MSG_FORCE="Override"
                 shift 1
             ;;
 
@@ -801,7 +835,10 @@ function repair() {
     fi
 
     # Install config
-    install_config "${FORCE_CONFIG}" "${CONTEXT_CFG}"
+    install_config "${FORCE_CONFIG}" "${CONTEXT_MSG_FORCE}"
+
+    # Install profile
+    install_profile "${FORCE_PROFILE}" "${CONTEXT_MSG_FORCE}"
 
     # Install run commands
     install_rc "${CONTEXT_MSG}"

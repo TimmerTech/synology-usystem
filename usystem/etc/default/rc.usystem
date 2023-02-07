@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC3040,SC3041
 #===============================================================================
-# WARNING: DO NOT EXIT
+# WARNING: DO NOT EDIT
 #
 # IF YOU NEED ADDITONAL CHANGES BEYOND PLEASE SUBMIT A MERGE REQUEST.
 # THIS FILE MIGHT BE OVERRIDEN WHEN YOU UPDATE USYSTEM.
@@ -12,15 +12,15 @@
 # ${USYS_BIND_DIR}/etc/rc.d and they will automatically be loaded.
 #
 #===============================================================================
-# bash strict mode
-set -T # inherit DEBUG and RETURN trap for functions
-set -C # prevent file overwrite by > &> <>
-set -E # inherit -e
-set -e # exit immediately on errors
-set -u # exit on not assigned variables
-set -o pipefail # exit on pipe failure
-
-
+# SHELL CONFIG
+#===============================================================================
+set -T              # inherit DEBUG and RETURN trap for functions
+set -C              # prevent file overwrite by > &> <>
+set -E              # inherit -e
+set -e              # exit immediately on errors
+set -u              # exit on not assigned variables
+set -o pipefail     # exit on pipe failure
+shopt -s nullglob   # loop 0 times on null glob
 #===============================================================================
 # USYSTEM Global Variables
 #===============================================================================

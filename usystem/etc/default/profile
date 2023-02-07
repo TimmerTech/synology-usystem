@@ -1,0 +1,59 @@
+# shellcheck disable=SC1113,SC2148
+#===============================================================================
+# WARNING: DO NOT EDIT
+#
+# It's stronly recommended not to edit this profile
+# Any user profile can be safely put into the profile.d directory
+# Doing this will allow this file to be upgraded.
+#
+#===============================================================================
+# SHELL CONFIG
+#===============================================================================
+set -T              # inherit DEBUG and RETURN trap for functions
+set -C              # prevent file overwrite by > &> <>
+set -E              # inherit -e
+set -e              # exit immediately on errors
+set -u              # exit on not assigned variables
+set -o pipefail     # exit on pipe failure
+shopt -s nullglob   # loop 0 times on null glob
+#===============================================================================
+# USYSTEM Global Variables
+#===============================================================================
++++INSTALL_VARS+++
+
+
+#===============================================================================
+# functions
+#===============================================================================
+is_substring(){
+    case "$2" in
+        *$1*) return 0;;
+        *) return 1;;
+    esac
+}
+
+
+#===============================================================================
+# PATH updates
+#===============================================================================
+# Load usystem.conf
+# shellcheck source=./usystem.conf
+source "${USYS_CONFIG}"
+for P in "${PATH_ENTRIES[@]}"; do
+    if ! is_substring "${P}" "${PATH}"; then
+        export PATH="${P}:${PATH}"
+    fi
+done
+
+
+#===============================================================================
+# profile.d
+#===============================================================================
+# Load all scripts from profile.d
+for PROFILE in "${USYS_CONFIG_DIR}"/profile.d/*; do
+    if [ -r "${PROFILE}" ] && bash -n "${PROFILE}"; then
+        # Load profile
+        # shellcheck disable=SC1090
+        . "${PROFILE}"
+    fi
+done
