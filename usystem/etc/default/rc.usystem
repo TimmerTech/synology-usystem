@@ -75,13 +75,16 @@ function link_profile() {
         echo "Synology User System; Updating: /etc/profile"
 cat >> /etc/profile <<"EOF"
 
+# +++{CLI_NAME}+++
 # Loading Synology User System
 if [ -r {USYS_BIND_DIR}/etc/profile ] && bash -n {USYS_BIND_DIR}/etc/profile; then
     . {USYS_BIND_DIR}/etc/profile
 fi
+# ---{CLI_NAME}---
 EOF
 
     sed -i "s|{USYS_BIND_DIR}|${USYS_BIND_DIR}|g" /etc/profile
+    sed -i "s|{CLI_NAME}|${CLI_NAME}|g" /etc/profile
 
     fi
 }
