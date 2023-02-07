@@ -69,12 +69,17 @@ done
 # profile.d
 #===============================================================================
 # Load all scripts from profile.d
-for PROFILE in {USYS_CONFIG_DIR}/profile.d/!(*.tmpl); do
-    if [ -r "${PROFILE}" ] && bash -n "${PROFILE}"; then
-        # Load profile
-        # shellcheck disable=SC1090
-        . "${PROFILE}"
-    fi
+for PROFILE in {USYS_CONFIG_DIR}/profile.d/*; do
+    case "${PROFILE}" in
+        *.tmpl) false ;;
+        *)
+            if [ -r "${PROFILE}" ] && bash -n "${PROFILE}"; then
+                # Load profile
+                # shellcheck disable=SC1090
+                . "${PROFILE}"
+            fi
+        ;;
+    esac
 done
 
 #===============================================================================
