@@ -87,9 +87,14 @@ done
 #===============================================================================
 # Load all bash completion
 for SCRIPT in {USYS_CONFIG_DIR}/bash_completion.d/*; do
-    if [ -r "${SCRIPT}" ] && bash -n "${SCRIPT}"; then
-        # Load script
-        # shellcheck disable=SC1090
-        . "${SCRIPT}"
-    fi
+    case "${SCRIPT}" in
+        *.tmpl) false ;;
+        *)
+            if [ -r "${SCRIPT}" ] && bash -n "${SCRIPT}"; then
+                # Load script
+                # shellcheck disable=SC1090
+                . "${SCRIPT}"
+            fi
+        ;;
+    esac
 done
