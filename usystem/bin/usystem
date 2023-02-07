@@ -187,6 +187,32 @@
 #===============================================================================
 # PRUNE_END
 #===============================================================================
+# UPGRADE
+#===============================================================================
+#% SYNOPSIS
+#+    ${CLI_NAME} upgrade
+#%
+#% DESCRIPTION
+#%    Upgrade the user system
+#%
+#% OPTIONS
+#%        --force-config    Override config with default config, without this
+#%                          option a forced install will keep a previous config
+#%                          intact. This will override the config with the newly
+#%                          shipped config. (default false) [FORCE_CONFIG]
+#%        --force-profile   Override profile with default profile, without this
+#%                          option a forced install will keep a previous profile
+#%                          intact. This will override the profile with the newly
+#%                          shipped profile. [FORCE_PROFILE]
+#%        --local FILE      Install from locally download file. If not provided
+#%                          usystem will be downloaded from repository. This
+#%                          option will not be presisted to usystem.conf.
+#%                          (default USYS_ROOT/usystem.tgz) [USYS_REPO_ARCHIVE]
+#%    -h, --help            Show this help
+#%
+#===============================================================================
+# UPGRADE_END
+#===============================================================================
 
 
 #===============================================================================
@@ -357,6 +383,29 @@ function is_enabled() {
     return 1
 }
 
+function remove_from_array() {
+    local -n ARR="${1}"
+    local -r DELETE="${2}"
+
+    TMP_ARR=()
+    for PKG in "${ARRAY[@]}"; do
+        for DEL in "${DELETE[@]}"; do
+            KEEP=true
+            if [[ "${PKG}" == "${DEL}" ]]; then
+                KEEP=false
+                break
+            fi
+        done
+        if ${KEEP}; then
+            TMP_ARR+=("${PKG}")
+        fi
+    done
+
+    # shellcheck disable=SC2034
+    ARR=("${TMP_ARR[@]}")
+    unset TMP_ARR
+}
+
 function log() {
     local -r LVL="${1}"
     local -r MSG="${2}"
@@ -517,10 +566,8 @@ function download() {
     return 0
 }
 
-function install_archive() {
+function install_from_archive() {
     local -r LOG="${1}"
-    local -r FORCE="${2:-false}"
-    local -r FORCE_CONFIG="${3:-false}"
 
     # Set umask
     umask 022
@@ -537,7 +584,7 @@ function install_archive() {
     fecho "Installing ..."
     # Extract archive to USYS_TARGET/install, we are installing to this temporary directory
     # because the user might have choosen to override the default of USYS_ROOT
-    # therefor we must create the USYS_ROOT and move the entire usystem here.
+    # therefor we must create the USYS_ROOT and copy the entire usystem here.
     if tar -xvf "${USYS_REPO_ARCHIVE}" --strip-components=1 -C "${USYS_TARGET}/install" > "${LOG}" 2>&1; then
 
         # Create USYS_ROOT
@@ -546,7 +593,7 @@ function install_archive() {
         fi
 
         # Now copy the usystem to the its final destination
-        if ! cp -rav "${USYS_TARGET}/install/${CLI_NAME}"/* "${USYS_ROOT}" >> "${LOG}" 2>&1; then
+        if ! cp -rav "${USYS_TARGET}/install/usystem"/* "${USYS_ROOT}" >> "${LOG}" 2>&1; then
             fresult FAIL ERROR "Failed to move usystem; see log: ${LOG}" && exit 1
         fi
 
@@ -562,6 +609,56 @@ function install_archive() {
         fresult OK
     else
         fresult FAIL ERROR "failed to install; see log: ${LOG}"
+    fi
+}
+
+function upgrade_from_archive() {
+    # Remove USYS_TARGET/install before installing, this directory might be
+    # present due to install failure
+    if [ -d "${USYS_TARGET}/install" ]; then
+        rm -rf "${USYS_TARGET}/install"
+    fi
+
+    # Create temporary install directory
+    mkdir -p "${USYS_TARGET}/install"
+
+    fecho "Installing ..."
+    # Extract archive to USYS_TARGET/install, we are installing to this temporary directory
+    # because the user might have choosen to override the default of USYS_ROOT
+    # therefor we must create the USYS_ROOT and copy the entire usystem here.
+    # The overrides are autoloaded from ${CLI_NAME}.conf when starting the upgrade
+    if tar -xvf "${USYS_REPO_ARCHIVE}" --strip-components=1 -C "${USYS_TARGET}/install" > "${LOG}" 2>&1; then
+        # Now copy the usystem to the its final destination
+        if ! cp -rav "${USYS_TARGET}/install/usystem"/* "${USYS_ROOT}" >> "${LOG}" 2>&1; then
+            fresult FAIL ERROR "Failed to move usystem; see log: ${LOG}" && exit 1
+        fi
+
+        # Copy LICENSE to USYS_TARGET
+        if ! cp -rav "${USYS_TARGET}/install/LICENSE" "${USYS_TARGET}/LICENSE" >> "${LOG}" 2>&1; then
+            fresult FAIL ERROR "Failed to move LICENSE; see log: ${LOG}" && exit 1
+        fi
+
+        # Remove install folder, to make sure we cleanup after ourselfs
+        rm -rf "${USYS_TARGET}/install" >> "${LOG}" 2>&1
+
+        # Install fresult OK
+        fresult OK
+    else
+        fresult FAIL ERROR "Upgrade failed; restoring from backup"
+        fecho "Restoring from backup ..."
+        if tar -xvf "${BACKUP_ARCHIVE}" -C "${USYSTEM_ROOT_DIR}" > "${LOG}" 2>&1; then
+            printf '[OK]\n'
+
+            # Restore complete, removing log
+            rm "${REVERT_LOG}"
+        else
+            fresult FAIL ERROR "Failed to restore backup, manual restore required"
+            log ERROR  "See log: ${LOG}"
+            exit 1
+        fi
+
+        # Terminate upgrade
+        exit 1
     fi
 }
 
@@ -738,15 +835,15 @@ function prune_logs() {
 # COMMANDS
 #===============================================================================
 function install() {
-    # Install Variables
+    local PARAMS=($@)
+    PARAMS+=("--install")
+    remove_from_array PARAMS "--force"
+
     local FORCE="${FORCE:-false}"
     local FORCE_CONFIG="${FORCE_CONFIG:-false}"
     local FORCE_PROFILE="${FORCE_PROFILE:-false}"
     local LOCAL_INSTALL=false
     local -r LOG="${USYS_TARGET}/${CLI_NAME}.${FUNCNAME[1]}.${CLI_EXEC_DT}.log"
-
-    # Options array for calling the repair function after install
-    local CMD_REPAIR_OPTS=("--install")
 
     # Parse options
     while [ ${#} -gt 0 ]; do
@@ -767,16 +864,10 @@ function install() {
             --log-dir)          USYS_LOG_DIR="${1}";        readonly USYS_LOG_DIR;      shift 2 ;;
             --force-config)
                 FORCE_CONFIG=true; readonly FORCE_CONFIG
-
-                # Add option to repair command
-                CMD_REPAIR_OPTS+=("--force-config")
                 shift 1
             ;;
             --force-profile)
                 FORCE_PROFILE=true; readonly FORCE_PROFILE
-
-                # Add option to repair command
-                CMD_REPAIR_OPTS+=("--force-profile")
                 shift 1
             ;;
             --local)
@@ -842,8 +933,8 @@ function install() {
         download
     fi
 
-    # Install archive, either downloaded or local
-    install_archive "${LOG}" "${FORCE}" "${FORCE_CONFIG}"
+    # Install from archive, either downloaded or local
+    install_from_archive "${LOG}"
 
     # Create directories
     fecho "Creating directories ..."
@@ -862,7 +953,7 @@ function install() {
     install_vars
 
     # Call repair user system, to finish the installation
-    repair "${CMD_REPAIR_OPTS[@]}"
+    repair "${PARAMS[@]}"
 }
 
 function repair() {
@@ -883,6 +974,13 @@ function repair() {
             # This option exists to correct the message output to the user
             --install)
                 CONTEXT_MSG="Installing"; readonly CONTEXT_MSG;
+                shift 1
+            ;;
+
+            # Hidden option, this option only exists for the call from the 'upgrade' command
+            # This option exists to correct the message output to the user
+            --upgrade)
+                CONTEXT_MSG="Upgrading"; readonly CONTEXT_MSG;
                 shift 1
             ;;
 
@@ -1082,6 +1180,85 @@ function prune() {
     fi
 }
 
+function upgrade() {
+    local -r LOG=$(log_file)
+    local PARAMS=($@)
+    PARAMS+=("--upgrade")
+    remove_from_array PARAMS "--local"
+
+    local FORCE_CONFIG="${FORCE_CONFIG:-false}"
+    local FORCE_PROFILE="${FORCE_PROFILE:-false}"
+    local LOCAL_INSTALL=false
+
+    # Parse options
+    while [ ${#} -gt 0 ]; do
+        case $1 in
+            -h | --help | help)
+                scriptinfo 0 prune
+            ;;
+            --force-config)
+                FORCE_CONFIG=true; readonly FORCE_CONFIG
+                shift 1
+            ;;
+            --force-profile)
+                FORCE_PROFILE=true; readonly FORCE_PROFILE
+                shift 1
+            ;;
+            --local)
+                LOCAL_INSTALL=true;         readonly LOCAL_INSTALL;
+                USYS_REPO_ARCHIVE="${2}";   readonly USYS_REPO_ARCHIVE
+                shift 2
+            ;;
+            * )
+                printf "unknown option: '%s'\n" "${1}"
+                scriptinfo 1 upgrade
+            ;;
+        esac
+    done
+
+    # Check if we are running as root
+    is_root "${FUNCNAME[0]}"
+
+    # Create backup
+    backup "$@"
+
+    # Because we have the option '--force' to perform a forced install
+    # we must unmount the usystem if we are dealing with an override.
+    umount_usystem
+
+    # Check if we are performing a local install
+    # if not then remove possible present downloaded archive
+    if ! is_enabled "${LOCAL_INSTALL}"; then
+        rm -f "${USYS_REPO_ARCHIVE}"
+
+        # set download log; because we might never be installed, write the
+        # download log to USYS_TARGET
+        download
+    fi
+
+    # upgrade from archive, either downloaded or local
+    upgrade_from_archive "${LOG}"
+
+    # Create directories
+    fecho "Creating directories ..."
+    if create_directories; then
+        fresult OK
+    else
+        fresult FAIL ERROR: "Failed to create directories" && exit 1
+    fi
+
+    # Fix permissions of file/folders
+    if ! fix_permissions "${LOG}"; then
+        fresult FAIL ERROR "Failed to repair permissions"
+    fi
+
+    # Install variables in files, this step is only done during install
+    install_vars
+
+    # Call repair user system, to finish the installation
+    repair "${PARAMS[@]}"
+}
+
 
 #===============================================================================
 # FINISH
@@ -1120,7 +1297,7 @@ function main() {
             shift 1
         ;;
 
-        backup | link | install | prune | repair )
+        backup | link | install | prune | repair | upgrade )
             $1 "${@:2}";
         ;;
 
