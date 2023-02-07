@@ -573,7 +573,8 @@ EOF
 }
 
 function replace_placeholders() {
-    local -r FILE="${1}"
+    local -r SOURCE="${1}"
+    local -r TARGET="${2}"
 
     declare -A USYS_PLACEHOLDERS
     USYS_PLACEHOLDERS[{CLI_NAME}]="${CLI_NAME}"
@@ -590,7 +591,7 @@ function replace_placeholders() {
 
     for PLACEHOLDER in "${!USYS_PLACEHOLDERS[@]}"; do
         VALUE="${USYS_PLACEHOLDERS[$PLACEHOLDER]}"
-        sed -i "s|${PLACEHOLDER}|${VALUE}|g" "${FILE}"
+        sed "s|${PLACEHOLDER}|${VALUE}|g" "${SOURCE}" >| "${TARGET}"
     done
 }
 
@@ -605,7 +606,7 @@ function install_replace_vars() {
             d
         }" "${FILE}"
 
-        replace_placeholders "${FILE}"
+        replace_placeholders "${FILE}" "${FILE}"
     done
 
 }
@@ -1328,11 +1329,11 @@ function generate() {
     while [ ${#} -gt 0 ]; do
         case $1 in
             -h | --help | help)
-                scriptinfo 0 prune
+                scriptinfo 0 generate
             ;;
             * )
                 printf "unknown option: '%s'\n" "${1}"
-                scriptinfo 1 upgrade
+                scriptinfo 1 generate
             ;;
         esac
     done
@@ -1341,8 +1342,18 @@ function generate() {
     is_root "${FUNCNAME[0]}"
 
     # Generate all files from templates
-    for TEMPLATE in "${USYS_ROOT}"/**/*.tmpl; do
-        echo $TEMPLATE
+    for TMPL in "${USYS_ROOT}"/**/*.tmpl; do
+        DEST="${TMPL%.*}"
+        TMPL_BASE="$(basename "${TMPL}")"
+        DEST_BASE="$(basename "${DEST}")"
+
+        log NONE "Generate: ${TMPL_BASE} => ${DEST_BASE}"
+        replace_placeholders "${TMPL}" "${DEST}"
+
+        for PLACEHOLDER in "${!USER_PLACEHOLDERS[@]}"; do
+            VALUE="${USER_PLACEHOLDERS[$PLACEHOLDER]}"
+            sed "s|${PLACEHOLDER}|${VALUE}|g" "${SOURCE}" >| "${TARGET}"
+        done
     done
 }
 
