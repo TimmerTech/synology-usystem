@@ -728,25 +728,22 @@ function install() {
             --config-dir)       USYS_CONFIG_DIR="${1}";     readonly USYS_CONFIG_DIR;   shift 2 ;;
             --log-dir)          USYS_LOG_DIR="${1}";        readonly USYS_LOG_DIR;      shift 2 ;;
             --force-config)
-                FORCE_CONFIG=true
-                readonly FORCE_CONFIG
+                FORCE_CONFIG=true; readonly FORCE_CONFIG
 
                 # Add option to repair command
                 CMD_REPAIR_OPTS+=("--force-config")
                 shift 1
             ;;
             --force-profile)
-                FORCE_PROFILE=true
-                readonly FORCE_PROFILE
+                FORCE_PROFILE=true; readonly FORCE_PROFILE
 
                 # Add option to repair command
                 CMD_REPAIR_OPTS+=("--force-profile")
                 shift 1
             ;;
             --local)
-                    LOCAL_INSTALL=true
-                    USYS_REPO_ARCHIVE="${2}"
-                    readonly USYS_REPO_ARCHIVE
+                    LOCAL_INSTALL=true;         readonly LOCAL_INSTALL;
+                    USYS_REPO_ARCHIVE="${2}";   readonly USYS_REPO_ARCHIVE
                     shift 2
             ;;
 
@@ -844,7 +841,7 @@ function repair() {
             # Hidden option, this option only exists for the call from the 'install' command
             # This option exists to correct the message output to the user
             --install)
-                CONTEXT_MSG="Installing"
+                CONTEXT_MSG="Installing"; readonly CONTEXT_MSG;
                 shift 1
             ;;
 
@@ -867,6 +864,9 @@ function repair() {
             ;;
         esac
     done
+
+    # Lock variable CONTEXT_MSG_FORCE
+    readonly CONTEXT_MSG_FORCE
 
     # Check if we are running as root
     is_root "${FUNCNAME[0]}"
@@ -942,15 +942,15 @@ function backup() {
                 scriptinfo 0 backup
             ;;
             -c | --clean)
-                CLEAN=true
+                CLEAN=true; readonly CLEAN;
                 shift 1
             ;;
             -f | --force)
-                FORCE=true
+                FORCE=true; readonly FORCE;
                 shift 1
             ;;
             -r | --backup-retain)
-                BACKUP_RETAIN="${1}"
+                BACKUP_RETAIN="${1}"; readonly BACKUP_RETAIN;
                 shift 2
             ;;
             * )
