@@ -564,20 +564,21 @@ function get_dsm_version() {
     grep majorversion /etc.defaults/VERSION | cut -d '=' -f 2- | tr -d '"'
 }
 
-function restart_service() {
+function servicectl() {
     local -r SRV="${1}"
-    local -r LOG="${2}"
+    local -r CTL="${2}"
+    local -r LOG="${3}"
     local -r DSM=$(get_dsm_version)
 
     case "${DSM}" in
         6)
-            if synoservicecfg --restart "${SRV}" >> "${LOG}" 2>&1; then
+            if synoservicecfg "--${CTL}" "${SRV}" >> "${LOG}" 2>&1; then
                 return 0
             fi
         ;;
 
         7)
-            if systemctl restart "${SRV}" >> "${LOG}" 2>&1; then
+            if systemctl "${CTL}" "${SRV}" >> "${LOG}" 2>&1; then
                 return 0
             fi
         ;;
@@ -586,8 +587,17 @@ function restart_service() {
     return 1
 }
 
+# Link nginx
+#
+# PARAMS
+#   LOG file
+#
+# Return
+#  0    Do nothing
+#  2    Restart nginx required
 function link_nginx() {
     local -r LOG="${1}"
+    local RETVAL=0
 
     for DIR in conf.d sites.enables; do
         for FPATH in "${USYS_CONFIG}/nginx/${DIR}"/*; do
@@ -602,6 +612,7 @@ function link_nginx() {
                     echo "Verifying Syntax for: /etc/nginx/${DIR}/${FILE}" >> "${LOG}"
                     if nginx -t >> "${LOG}" 2>&1; then
                         fresult OK
+                        RETVAL=2
                     else
                         # Syntax of nginx failed
                         # We want to ensure that the nginx is always running because of the DSM UI
@@ -620,6 +631,8 @@ function link_nginx() {
             fi
         done
     done
+
+    return "${RETVAL}"
 }
 
 
@@ -824,11 +837,10 @@ function link() {
     is_root "${FUNCNAME[0]}"
 
     # Link nginx
-    link_nginx "${LOG}"
-
-    # We have linked all syntax error free nginx resources
-    # restart nginx to apply
-    restart_service nginx "${LOG}"
+    if [ "$(link_nginx "${LOG}")" = 2 ]; then
+        # We have linked syntax error free resources, nginx restart is required
+        servicectl nginx restart "${LOG}"
+    fi
 }
 
 
