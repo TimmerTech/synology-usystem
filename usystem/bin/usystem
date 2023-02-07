@@ -860,7 +860,7 @@ function prune_logs() {
 # COMMANDS
 #===============================================================================
 function install() {
-    local PARAMS=($@)
+    local PARAMS=("$@")
     PARAMS+=("--install")
     remove_from_array PARAMS "--force"
 
