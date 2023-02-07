@@ -28,7 +28,7 @@ shopt -s nullglob   # loop 0 times on null glob
 
 
 #===============================================================================
-# LOCAL RC
+# RC LOCAL
 #===============================================================================
 # Mount Synology User System
 if [ -f "/etc/rc.${CLI_NAME}" ] && [ -x "/etc/rc.${CLI_NAME}" ]; then
