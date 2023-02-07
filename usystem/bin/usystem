@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#shellcheck disable=SC2155,SC3040,SC3041
+#shellcheck disable=SC1083,SC2155,SC3040,SC3041
 # SC2155: Declare and assign separately to avoid masking return values
 #===============================================================================
 # IMPLEMENTATION
@@ -38,6 +38,7 @@
 #%
 #% COMMANDS
 #%    backup            Backup user system
+#%    generate          Generate files from templates
 #%    install           Install Synology user system
 #%    link              Link user system resources to DSM
 #%    prune             Remove unused data
@@ -213,6 +214,33 @@
 #===============================================================================
 # UPGRADE_END
 #===============================================================================
+# GENERATE
+#===============================================================================
+#% SYNOPSIS
+#+    ${CLI_NAME} generate
+#%
+#% DESCRIPTION
+#%    Generate files from template (*.tmpl) files. This will generates files
+#%    with the same name excluding the .tmpl extension. In these generated files
+#%    the {...} placeholders will be replaced with their corresponding values.
+#%    By default all USYS_ variables will be replaced. To replace a USYS_ value
+#%    it must be referenced as a placeholder.
+#%
+#% PLACEHOLDERS
+#%    {CLI_NAME}
+#%    {USYS_BIND_DIR}
+#%    {USYS_VOLUME}
+#%    {USYS_TARGET}
+#%    {USYS_ROOT}
+#%    {USYS_BACKUP_DIR}
+#%    {USYS_CONFIG_DIR}
+#%    {USYS_CONFIG}
+#%    {USYS_LOG_DIR}
+#%    {USYS_TMP_DIR}
+#%
+#===============================================================================
+# GENERATE_END
+#===============================================================================
 
 
 #===============================================================================
@@ -225,6 +253,7 @@ set -e              # exit immediately on errors
 set -u              # exit on not assigned variables
 set -o pipefail     # exit on pipe failure
 shopt -s nullglob   # loop 0 times on null glob
+shopt -s globstar   # Find files recursivly
 
 # Define script finish function
 trap 'finish' EXIT
@@ -546,17 +575,23 @@ EOF
 function replace_placeholders() {
     local -r FILE="${1}"
 
-    sed -i "s|{CLI_NAME}|${CLI_NAME}|g" "${FILE}"
-    sed -i "s|{USYS_BIND_DIR}|${USYS_BIND_DIR}|g" "${FILE}"
-    sed -i "s|{USYS_BIND_DIR}|${USYS_BIND_DIR}|g" "${FILE}"
-    sed -i "s|{USYS_VOLUME}|${USYS_VOLUME}|g" "${FILE}"
-    sed -i "s|{USYS_TARGET}|${USYS_TARGET}|g" "${FILE}"
-    sed -i "s|{USYS_ROOT}|${USYS_ROOT}|g" "${FILE}"
-    sed -i "s|{USYS_BACKUP_DIR}|${USYS_BACKUP_DIR}|g" "${FILE}"
-    sed -i "s|{USYS_CONFIG_DIR}|${USYS_CONFIG_DIR}|g" "${FILE}"
-    sed -i "s|{USYS_CONFIG}|${USYS_CONFIG}|g" "${FILE}"
-    sed -i "s|{USYS_LOG_DIR}|${USYS_LOG_DIR}|g" "${FILE}"
-    sed -i "s|{USYS_TMP_DIR}|${USYS_TMP_DIR}|g" "${FILE}"
+    declare -A USYS_PLACEHOLDERS
+    USYS_PLACEHOLDERS[{CLI_NAME}]="${CLI_NAME}"
+    USYS_PLACEHOLDERS[{USYS_BIND_DIR}]="${USYS_BIND_DIR}"
+    USYS_PLACEHOLDERS[{USYS_BIND_DIR}]="${USYS_BIND_DIR}"
+    USYS_PLACEHOLDERS[{USYS_VOLUME}]="${USYS_VOLUME}"
+    USYS_PLACEHOLDERS[{USYS_TARGET}]="${USYS_TARGET}"
+    USYS_PLACEHOLDERS[{USYS_ROOT}]="${USYS_ROOT}"
+    USYS_PLACEHOLDERS[{USYS_BACKUP_DIR}]="${USYS_BACKUP_DIR}"
+    USYS_PLACEHOLDERS[{USYS_CONFIG_DIR}]="${USYS_CONFIG_DIR}"
+    USYS_PLACEHOLDERS[{USYS_CONFIG}]="${USYS_CONFIG}"
+    USYS_PLACEHOLDERS[{USYS_LOG_DIR}]="${USYS_LOG_DIR}"
+    USYS_PLACEHOLDERS[{USYS_TMP_DIR}]="${USYS_TMP_DIR}"
+
+    for PLACEHOLDER in "${!USYS_PLACEHOLDERS[@]}"; do
+        VALUE="${USYS_PLACEHOLDERS[$PLACEHOLDER]}"
+        sed -i "s|${PLACEHOLDER}|${VALUE}|g" "${FILE}"
+    done
 }
 
 function install_replace_vars() {
@@ -1288,6 +1323,28 @@ function upgrade() {
     repair "${PARAMS[@]}"
 }
 
+function generate() {
+    # Parse options
+    while [ ${#} -gt 0 ]; do
+        case $1 in
+            -h | --help | help)
+                scriptinfo 0 prune
+            ;;
+            * )
+                printf "unknown option: '%s'\n" "${1}"
+                scriptinfo 1 upgrade
+            ;;
+        esac
+    done
+
+    # Check if we are running as root
+    is_root "${FUNCNAME[0]}"
+
+    # Generate all files from templates
+    for TEMPLATE in "${USYS_ROOT}"/**/*.tmpl; do
+        echo $TEMPLATE
+    done
+}
 
 #===============================================================================
 # FINISH
@@ -1326,7 +1383,7 @@ function main() {
             shift 1
         ;;
 
-        backup | link | install | prune | repair | upgrade )
+        backup | generate | link | install | prune | repair | upgrade )
             $1 "${@:2}";
         ;;
 

@@ -28,11 +28,11 @@ shopt -s nullglob   # loop 0 times on null glob
 # RC LOCAL
 #===============================================================================
 # Mount Synology User System
-if [ -f "/etc/rc.${CLI_NAME}" ] && [ -x "/etc/rc.${CLI_NAME}" ]; then
-    "/etc/rc.${CLI_NAME}" start
+if [ -f "/etc/rc.{CLI_NAME}" ] && [ -x "/etc/rc.{CLI_NAME}" ]; then
+    /etc/rc.{CLI_NAME} start
 
     # Load all additional scripts from /usys/etc/rc.d
-    for RC in "${USYS_BIND_DIR}"/etc/rc.d/rc.*; do
+    for RC in "{USYS_BIND_DIR}"/etc/rc.d/rc.*; do
         if [ -f "${RC}" ]; then
             # Test for syntax errors
             if bash -n "${RC}"; then

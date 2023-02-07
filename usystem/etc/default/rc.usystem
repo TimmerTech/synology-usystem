@@ -9,7 +9,7 @@
 # URL: https://github.com/timmertech/synology-usystem
 #
 # If you need additional Run Commands; place your own run commands in
-# ${USYS_BIND_DIR}/etc/rc.d and they will automatically be loaded.
+# {USYS_BIND_DIR}/etc/rc.d and they will automatically be loaded.
 #
 #===============================================================================
 # SHELL CONFIG
@@ -28,47 +28,47 @@ shopt -s nullglob   # loop 0 times on null glob
 # USYSTEM RC Functions
 #===============================================================================
 function umount_usystem() {
-    # unmount ${USYS_BIND_DIR}/tmp
-    if grep " ${USYS_TMP_DIR} " /proc/mounts > /dev/null 2>&1; then
-        echo "Synology User System; umount: ${USYS_TMP_DIR}"
-        umount "${USYS_TMP_DIR}"
+    # unmount {USYS_BIND_DIR}/tmp
+    if grep " {USYS_TMP_DIR} " /proc/mounts > /dev/null 2>&1; then
+        echo "Synology User System; umount: {USYS_TMP_DIR}"
+        umount "{USYS_TMP_DIR}"
     fi
 
-    # umount ${USYS_BIND_DIR}
-    if grep " ${USYS_BIND_DIR} " /proc/mounts > /dev/null 2>&1; then
-        echo "Synology User System; umount: ${USYS_BIND_DIR}"
-        umount "${USYS_BIND_DIR}"
+    # umount {USYS_BIND_DIR}
+    if grep " {USYS_BIND_DIR} " /proc/mounts > /dev/null 2>&1; then
+        echo "Synology User System; umount: {USYS_BIND_DIR}"
+        umount "{USYS_BIND_DIR}"
     fi
 
     return 0
 }
 
 function mount_usystem() {
-    if ! grep " ${USYS_BIND_DIR} " /proc/mounts > /dev/null 2>&1; then
+    if ! grep " {USYS_BIND_DIR} " /proc/mounts > /dev/null 2>&1; then
         # Mount user system
-        if [ ! -d "${USYS_BIND_DIR}" ]; then
-            mkdir -p "${USYS_BIND_DIR}"
-            chmod 775 "${USYS_BIND_DIR}"
-            chown root:administrators "${USYS_BIND_DIR}"
+        if [ ! -d "{USYS_BIND_DIR}" ]; then
+            mkdir -p "{USYS_BIND_DIR}"
+            chmod 775 "{USYS_BIND_DIR}"
+            chown root:administrators "{USYS_BIND_DIR}"
         fi
-        echo "Synology User System; mount: ${USYS_BIND_DIR}"
-        mount -o bind "${USYS_ROOT}" "${USYS_BIND_DIR}"
+        echo "Synology User System; mount: {USYS_BIND_DIR}"
+        mount -o bind "{USYS_ROOT}" "{USYS_BIND_DIR}"
     fi
 
-    if ! grep " ${USYS_TMP_DIR} " /proc/mounts > /dev/null 2>&1; then
+    if ! grep " {USYS_TMP_DIR} " /proc/mounts > /dev/null 2>&1; then
         # Mount tmpfs to usys, so that we do not clutter the OS
         # and there is only a single tmpfs in use
-        if [ ! -d "${USYS_TMP_DIR}" ]; then
-            mkdir -p "${USYS_TMP_DIR}"
+        if [ ! -d "{USYS_TMP_DIR}" ]; then
+            mkdir -p "{USYS_TMP_DIR}"
         fi
-        echo "Synology User System; mount: ${USYS_BIND_DIR}/tmp"
-        mount -o bind /tmp "${USYS_TMP_DIR}"
+        echo "Synology User System; mount: {USYS_BIND_DIR}/tmp"
+        mount -o bind /tmp "{USYS_TMP_DIR}"
     fi
 }
 
 function link_profile() {
     # Add usystem profile to environment
-    if grep -qF ". ${USYS_BIND_DIR}/etc/profile" /etc/profile; then
+    if grep -qF ". {USYS_BIND_DIR}/etc/profile" /etc/profile; then
         echo "Synology User System: Enabled"
     else
         echo "Synology User System; Updating: /etc/profile"
@@ -82,9 +82,6 @@ fi
 # ---{CLI_NAME}---
 EOF
 
-    sed -i "s|{USYS_BIND_DIR}|${USYS_BIND_DIR}|g" /etc/profile
-    sed -i "s|{CLI_NAME}|${CLI_NAME}|g" /etc/profile
-
     fi
 }
 
@@ -95,7 +92,7 @@ EOF
 case "$1" in
     start)
         echo "Synology User System: boot"
-        if test -n "${USYS_ROOT}"; then
+        if test -n "{USYS_ROOT}"; then
             mount_usystem
             link_profile
         fi
