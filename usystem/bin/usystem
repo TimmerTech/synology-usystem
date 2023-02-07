@@ -349,7 +349,7 @@ function umount_usystem() {
     if grep " ${USYS_TMP_DIR} " /proc/mounts > /dev/null 2>&1; then
         fecho "umount ${USYS_BIND_DIR}/tmp ..."
         if umount "${USYS_TMP_DIR}"; then
-            fresult fresult OK
+            fresult OK
         else
             fresult ERROR "Failed to umount, manual install required" && exit 1
         fi
