@@ -352,7 +352,7 @@ function umount_usystem() {
         if umount "${USYS_TMP_DIR}"; then
             fresult OK
         else
-            fresult ERROR "Failed to umount, manual install required" && exit 1
+            fresult FAIL ERROR "Failed to umount, manual install required" && exit 1
         fi
     fi
 
@@ -362,7 +362,7 @@ function umount_usystem() {
         if umount "${USYS_BIND_DIR}"; then
             fresult OK
         else
-            fresult ERROR "Failed to umount, manual install required" && exit 1
+            fresult FAIL ERROR "Failed to umount, manual install required" && exit 1
         fi
     fi
 }
@@ -458,7 +458,7 @@ function download() {
     if wget -L "${USYS_REPO_URL}/archive/main.tar.gz" -O "${USYS_REPO_ARCHIVE}" -o "${LOG}" > /dev/null 2>&1; then
         fresult OK
     else
-        fresult ERROR "Failed to download usystem; see log: ${LOG}"
+        fresult FAIL ERROR "Failed to download usystem; see log: ${LOG}"
     fi
 
     return 0
@@ -494,12 +494,12 @@ function install_archive() {
 
         # Now copy the usystem to the its final destination
         if ! cp -rav "${USYS_TARGET}/install/${CLI_NAME}"/* "${USYS_ROOT}" >> "${LOG}" 2>&1; then
-            fresult ERROR "Failed to move usystem; see log: ${LOG}" && exit 1
+            fresult FAIL ERROR "Failed to move usystem; see log: ${LOG}" && exit 1
         fi
 
         # Copy LICENSE to USYS_TARGET
         if ! cp -rav "${USYS_TARGET}/install/LICENSE" "${USYS_TARGET}/LICENSE" >> "${LOG}" 2>&1; then
-            fresult ERROR "Failed to move LICENSE; see log: ${LOG}" && exit 1
+            fresult FAIL ERROR "Failed to move LICENSE; see log: ${LOG}" && exit 1
         fi
 
         # Remove install folder, to make sure we cleanup after ourselfs
@@ -508,7 +508,7 @@ function install_archive() {
         # Install fresult OK
         fresult OK
     else
-        fresult ERROR "failed to install; see log: ${LOG}"
+        fresult FAIL ERROR "failed to install; see log: ${LOG}"
     fi
 }
 
@@ -527,7 +527,7 @@ function install_config() {
         if cp "${USYS_CONFIG_DIR}/default/usystem.conf" "${USYS_CONFIG}"; then
             fresult OK
         else
-            fresult ERROR "Failed to install config"
+            fresult FAIL ERROR "Failed to install config"
         fi
     fi
 }
@@ -547,7 +547,7 @@ function install_profile() {
         if cp "${USYS_CONFIG_DIR}/default/profile" "${USYS_CONFIG_DIR}/profile"; then
             fresult OK
         else
-            fresult ERROR "Failed to install profile"
+            fresult FAIL ERROR "Failed to install profile"
         fi
     fi
 }
@@ -564,14 +564,14 @@ function install_rc() {
     if cp "${USYS_CONFIG_DIR}/default/rc.${CLI_NAME}" /etc; then
         fresult OK
     else
-        fresult ERROR "Failed to install rc.${CLI_NAME}" && exit 1
+        fresult FAIL ERROR "Failed to install rc.${CLI_NAME}" && exit 1
     fi
 
     fecho "${MSG} rc.local ..."
     if cp "${USYS_CONFIG_DIR}/default/rc.local" /etc; then
         fresult OK
     else
-        fresult ERROR "Failed to install rc.local" && exit 1
+        fresult FAIL ERROR "Failed to install rc.local" && exit 1
     fi
 }
 
@@ -635,10 +635,10 @@ function link_nginx() {
                         # because of the syntax error we are now removing our created link
                         echo "Removing link /etc/nginx/${DIR}/${FILE} because of syntax errors" >> "${LOG}"
                         rm -f "/etc/nginx/${DIR}/${FILE}"
-                        fresult ERROR "Syntax Error; see log ${LOG}"
+                        fresult FAIL ERROR "Syntax Error; see log ${LOG}"
                     fi
                 else
-                    fresult ERROR "Failed to create link: see log ${LOG}"
+                    fresult FAIL ERROR "Failed to create link: see log ${LOG}"
                 fi
             else
                 echo "/etc/nginx/${DIR}/${FILE} already exists as a file" >> "${LOG}"
@@ -764,12 +764,12 @@ function install() {
     if create_directories; then
         fresult OK
     else
-        fresult ERROR: "Failed to create directories" && exit 1
+        fresult FAIL ERROR: "Failed to create directories" && exit 1
     fi
 
     # Fix permissions of file/folders
     if ! fix_permissions "${LOG}"; then
-        fresult ERROR "Failed to repair permissions"
+        fresult FAIL ERROR "Failed to repair permissions"
     fi
 
     # Install variables in files, this step is only done during install
@@ -828,7 +828,7 @@ function repair() {
     if fix_permissions "${LOG}"; then
         fresult OK
     else
-        fresult ERROR "Failed to repair permissions" && exit 1
+        fresult FAIL ERROR "Failed to repair permissions" && exit 1
     fi
 
     # Install config
@@ -858,7 +858,7 @@ function repair() {
 function link() {
     local -r LOG=$(log_file)
 
-     # Parse options
+    # Parse options
     while [ ${#} -gt 0 ]; do
         case $1 in
             -h | --help | help)
