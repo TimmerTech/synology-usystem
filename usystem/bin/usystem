@@ -70,31 +70,42 @@
 #%    -f, --force           Forced install, will override any safety measure.
 #%                          A forced install will only create the config if not
 #%                          present. (default false) [FORCE]
-#%        --force-config    Override config with default config, without this option
-#%                          a forced install will keep a previous config intact.
-#%                          This will override the config with the newly shipped config.
+#%        --force-config    Override config with default config, without this
+#%                          option a forced install will keep a previous
+#%                          config intact. This will override the config with
+#%                          the newly shipped config.
 #%                          (default false) [FORCE_CONFIG]
-#%        --force-profile   Override profile with default profile, without this option
-#%                          a forced install will keep a previous profile intact.
-#%                          This will override the profile with the newly shipped profile. [FORCE_PROFILE]
-#%        --cli-name        Will set the name of the cli command, this will propagate to the target directory,
-#%                          root directory and config file name. This will allow multiple installations.
-#%                          (default usystem) [CLI_NAME]
-#%    -b, --bind-dir        Directory in root where the usystem will be bound (default /usys) [USYS_BIND_DIR]
-#%    -v, --volume          Set volume to install to (default /volume1) [USYS_VOLUME]
-#%    -t, --target-dir      Set target installation directory (default USYS_VOLUME/@usystem) [USYS_TARGET]
-#%    -r, --root-dir        Set root directory (default USYS_TARGET/usystem) [USYS_ROOT]
-#%        --backup-dir      Set backup directory (default USYS_TARGET/backup) [USYS_BACKUP_DIR]
-#%        --config-dir      Set config directory (default USYS_ROOT/etc) [USYS_CONFIG_DIR]
-#%        --log-dir         Set log direcotory (default USYS_ROOT/log) [USYS_LOG_DIR]
+#%        --force-profile   Override profile with default profile, without this
+#%                          option a forced install will keep a previous profile
+#%                          intact. This will override the profile with the newly
+#%                          shipped profile. (default false) [FORCE_PROFILE]
+#%        --cli-name        Will set the name of the cli command, this will
+#%                          propagate to the target directory, root directory and
+#%                          config file name. This will allow multiple
+#%                          installations. (default usystem) [CLI_NAME]
+#%    -b, --bind-dir        Directory in root where the usystem will be bound
+#%                          (default /usys) [USYS_BIND_DIR]
+#%    -v, --volume          Set volume to install to
+#%                          (default /volume1) [USYS_VOLUME]
+#%    -t, --target-dir      Set target installation directory
+#%                          (default USYS_VOLUME/@usystem) [USYS_TARGET]
+#%    -r, --root-dir        Set root directory
+#%                          (default USYS_TARGET/usystem) [USYS_ROOT]
+#%        --backup-dir      Set backup directory
+#%                          (default USYS_TARGET/backup) [USYS_BACKUP_DIR]
+#%        --config-dir      Set config directory
+#%                          (default USYS_ROOT/etc) [USYS_CONFIG_DIR]
+#%        --log-dir         Set log direcotory
+#%                          (default USYS_ROOT/log) [USYS_LOG_DIR]
 #%        --local FILE      Install from locally download file.
-#%                          If not provided usystem will be downloaded from repository.
-#%                          This option will not be presisted to usystem.conf after install.
+#%                          If not provided usystem will be downloaded from
+#%                          repository. This option will not be presisted to
+#%                          usystem.conf after install.
 #%                          (default USYS_ROOT/usystem.tgz) [USYS_REPO_ARCHIVE]
 #%    -h, --help            Show this help
 #%
 #% HELP
-#%    Options can be provided by environment variables defined within brackets [].
+#%    Options can be provided by environment variables defined within brackets []
 #%
 #===============================================================================
 # INSTALL_END
@@ -110,7 +121,8 @@
 #%    perform the link of resources.
 #%
 #% OPTIONS
-#%        --force-config    Override config with default config (default false) [FORCE_CONFIG]
+#%        --force-config    Override config with default config
+#%                          (default false) [FORCE_CONFIG]
 #%    -h, --help            Show this help
 #%
 #===============================================================================
@@ -776,9 +788,9 @@ function install() {
                 shift 1
             ;;
             --local)
-                    LOCAL_INSTALL=true;         readonly LOCAL_INSTALL;
-                    USYS_REPO_ARCHIVE="${2}";   readonly USYS_REPO_ARCHIVE
-                    shift 2
+                LOCAL_INSTALL=true;         readonly LOCAL_INSTALL;
+                USYS_REPO_ARCHIVE="${2}";   readonly USYS_REPO_ARCHIVE
+                shift 2
             ;;
 
             * )
@@ -964,8 +976,8 @@ function link() {
 }
 
 function backup() {
-    local BACKUP_RETAIN="${BACKUP_RETAIN:-30}"
     local -r LOG=$(log_file)
+    local BACKUP_RETAIN="${BACKUP_RETAIN:-30}"
     local CLEAN=false
     local FORCE=false
 
