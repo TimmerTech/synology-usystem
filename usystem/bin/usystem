@@ -199,15 +199,11 @@ declare     FORCE_PROFILE=false
 # When a re-install is preformed, the user can reinstall over the current install
 # because the configuration will lock the install variables.
 # shellcheck disable=SC2059
-printf "${LOG_PFX}" "Install Source ..."
 if [[ -t 1 ]]; then
-    printf '[Terminal]\n'
     if [ -f "${CLI_DIR}/../etc/${CLI_NAME}.conf" ]; then
         # shellcheck source=../etc/default/usystem.conf
         source "${CLI_DIR}/../etc/${CLI_NAME}.conf"
     fi
-else
-    printf '[Online]\n'
 fi
 
 
@@ -659,11 +655,6 @@ function link_nginx() {
 # COMMANDS
 #===============================================================================
 function install() {
-    # Print header because we also provide online install
-    printf '%s\n' "Synology User System"
-    printf '%s\n\n' "Version: ${CLI_VERSION}"
-    printf '%s\n\n' "For more information visit: https://www.timmertech.io"
-
     # Install Variables
     local FORCE="${FORCE:-false}"
     local FORCE_CONFIG="${FORCE_CONFIG:-false}"
@@ -723,6 +714,11 @@ function install() {
 
     # Check if we are running as root
     is_root "${FUNCNAME[0]}"
+
+    # Print header because we also provide online install
+    printf '%s\n' "Synology User System"
+    printf '%s\n\n' "Version: ${CLI_VERSION}"
+    printf '%s\n\n' "For more information visit: https://www.timmertech.io"
 
     # Verify the volume path exists
     exists "${USYS_VOLUME}" || ( log ERROR "Volume: '${USYS_VOLUME}' does not exists" && exit 1 )
