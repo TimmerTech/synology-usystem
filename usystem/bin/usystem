@@ -238,7 +238,8 @@ trap 'finish' EXIT
 # This will allow multiple installations next to each other.
 # When set during install, the name will be written as readonly variable to the
 # install variable.
-declare     CLI_NAME="${CLI_NAME:-usystem}"
+declare     BASENAME="$(basename "${0}")"
+declare     CLI_NAME="${CLI_NAME:-${BASENAME:-usystem}}"
 
 # CLI Version
 declare -r  CLI_VERSION=1.0.0;
