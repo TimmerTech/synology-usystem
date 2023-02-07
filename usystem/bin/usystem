@@ -682,7 +682,7 @@ function upgrade_from_archive() {
     # Create temporary install directory
     mkdir -p "${USYS_TARGET}/install"
 
-    fecho "Installing ..."
+    fecho "Upgrading ..."
     # Extract archive to USYS_TARGET/install, we are installing to this temporary directory
     # because the user might have choosen to override the default of USYS_ROOT
     # therefor we must create the USYS_ROOT and copy the entire usystem here.
@@ -895,7 +895,7 @@ function prune_logs() {
 # COMMANDS
 #===============================================================================
 function install() {
-    local PARAMS=("$@")
+    local PARAMS=($@)
     PARAMS+=("--install")
     remove_from_array PARAMS "--force"
 
@@ -1244,7 +1244,7 @@ function prune() {
 
 function upgrade() {
     local -r LOG=$(log_file)
-    local PARAMS=("$@")
+    local PARAMS=($@)
     PARAMS+=("--upgrade")
     remove_from_array PARAMS "--local"
 
@@ -1256,7 +1256,7 @@ function upgrade() {
     while [ ${#} -gt 0 ]; do
         case $1 in
             -h | --help | help)
-                scriptinfo 0 prune
+                scriptinfo 0 upgrade
             ;;
             --force-config)
                 FORCE_CONFIG=true; readonly FORCE_CONFIG
