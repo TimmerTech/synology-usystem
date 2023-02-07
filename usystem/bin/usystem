@@ -376,6 +376,7 @@ function umount_usystem() {
 function create_directories() {
     # Directories
     local -ra DIRECTORIES=(
+        etc/bash_completion.d
         etc/certs
         etc/nginx/conf.d
         etc/nginx/sites.enabled
