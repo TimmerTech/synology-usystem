@@ -911,6 +911,10 @@ function link() {
             -h | --help | help)
                 scriptinfo 0 link
             ;;
+            * )
+                printf "unknown option: '%s'\n" "${1}"
+                scriptinfo 1 link
+            ;;
         esac
     done
 
@@ -947,6 +951,10 @@ function backup() {
             -r | --backup-retain)
                 BACKUP_RETAIN="${1}"
                 shift 2
+            ;;
+            * )
+                printf "unknown option: '%s'\n" "${1}"
+                scriptinfo 1 backup
             ;;
         esac
     done
