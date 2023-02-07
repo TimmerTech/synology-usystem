@@ -629,8 +629,8 @@ function install() {
     fi
 
     # Create target directory on OS
-    if [ ! -d /usys ]; then
-        mkdir -p /usys
+    if [ ! -d "${USYS_BIND_DIR}" ]; then
+        mkdir -p "${USYS_BIND_DIR}"
     fi
 
     # Verify that the root directory does not exist
