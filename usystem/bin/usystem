@@ -260,8 +260,8 @@ declare     USYS_ROOT="${USYS_ROOT:-"${USYS_TARGET}/${CLI_NAME}"}";
 declare     USYS_BACKUP_DIR="${USYS_BACKUP_DIR:-${USYS_TARGET}/backup}";
 declare     USYS_CONFIG_DIR="${USYS_CONFIG_DIR:-${USYS_ROOT}/etc}";
 declare     USYS_LOG_DIR="${USYS_LOG_DIR:-${USYS_ROOT}/log}";
-declare -r  USYS_TMP_DIR="${USYS_TMP_DIR:-${USYS_ROOT}/tmp}";
-declare -r  USYS_CONFIG="${USYS_CONFIG:-${USYS_CONFIG_DIR}/${CLI_NAME}.conf}"
+declare     USYS_TMP_DIR="${USYS_TMP_DIR:-${USYS_ROOT}/tmp}";
+declare     USYS_CONFIG="${USYS_CONFIG:-${USYS_CONFIG_DIR}/${CLI_NAME}.conf}"
 
 # User System Repository
 declare -r  USYS_REPO_URL="${USYS_REPO_URL:-https://github.com/TimmerTech/synology-usystem}";
