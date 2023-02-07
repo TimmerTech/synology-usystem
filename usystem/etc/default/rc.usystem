@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC3040,SC3041
+# shellcheck disable=SC1083,SC2288,SC3040,SC3041
 #===============================================================================
 # WARNING: DO NOT EDIT
 #
@@ -31,13 +31,13 @@ function umount_usystem() {
     # unmount {USYS_BIND_DIR}/tmp
     if grep " {USYS_TMP_DIR} " /proc/mounts > /dev/null 2>&1; then
         echo "Synology User System; umount: {USYS_TMP_DIR}"
-        umount "{USYS_TMP_DIR}"
+        umount {USYS_TMP_DIR}
     fi
 
     # umount {USYS_BIND_DIR}
     if grep " {USYS_BIND_DIR} " /proc/mounts > /dev/null 2>&1; then
         echo "Synology User System; umount: {USYS_BIND_DIR}"
-        umount "{USYS_BIND_DIR}"
+        umount {USYS_BIND_DIR}
     fi
 
     return 0
@@ -46,23 +46,23 @@ function umount_usystem() {
 function mount_usystem() {
     if ! grep " {USYS_BIND_DIR} " /proc/mounts > /dev/null 2>&1; then
         # Mount user system
-        if [ ! -d "{USYS_BIND_DIR}" ]; then
-            mkdir -p "{USYS_BIND_DIR}"
-            chmod 775 "{USYS_BIND_DIR}"
-            chown root:administrators "{USYS_BIND_DIR}"
+        if [ ! -d {USYS_BIND_DIR} ]; then
+            mkdir -p {USYS_BIND_DIR}
+            chmod 775 {USYS_BIND_DIR}
+            chown root:administrators {USYS_BIND_DIR}
         fi
         echo "Synology User System; mount: {USYS_BIND_DIR}"
-        mount -o bind "{USYS_ROOT}" "{USYS_BIND_DIR}"
+        mount -o bind {USYS_ROOT} {USYS_BIND_DIR}
     fi
 
     if ! grep " {USYS_TMP_DIR} " /proc/mounts > /dev/null 2>&1; then
         # Mount tmpfs to usys, so that we do not clutter the OS
         # and there is only a single tmpfs in use
-        if [ ! -d "{USYS_TMP_DIR}" ]; then
-            mkdir -p "{USYS_TMP_DIR}"
+        if [ ! -d {USYS_TMP_DIR} ]; then
+            mkdir -p {USYS_TMP_DIR}
         fi
         echo "Synology User System; mount: {USYS_BIND_DIR}/tmp"
-        mount -o bind /tmp "{USYS_TMP_DIR}"
+        mount -o bind /tmp {USYS_TMP_DIR}
     fi
 }
 

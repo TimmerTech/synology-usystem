@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC3040,SC3041
+# shellcheck disable=SC1083,SC2288,SC3040,SC3041
 #===============================================================================
 # WARNING: DO NOT EDIT
 #
@@ -28,11 +28,11 @@ shopt -s nullglob   # loop 0 times on null glob
 # RC LOCAL
 #===============================================================================
 # Mount Synology User System
-if [ -f "/etc/rc.{CLI_NAME}" ] && [ -x "/etc/rc.{CLI_NAME}" ]; then
+if [ -f /etc/rc.{CLI_NAME} ] && [ -x /etc/rc.{CLI_NAME} ]; then
     /etc/rc.{CLI_NAME} start
 
     # Load all additional scripts from /usys/etc/rc.d
-    for RC in "{USYS_BIND_DIR}"/etc/rc.d/rc.*; do
+    for RC in {USYS_BIND_DIR}/etc/rc.d/rc.*; do
         if [ -f "${RC}" ]; then
             # Test for syntax errors
             if bash -n "${RC}"; then
