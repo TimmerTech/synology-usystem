@@ -869,7 +869,7 @@ function main() {
             shift 1
         ;;
 
-        install )
+        link | install | repair )
             $1 "${@:2}";
         ;;
 
