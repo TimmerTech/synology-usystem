@@ -679,7 +679,7 @@ function link_nginx() {
     return "${RETVAL}"
 }
 
-function backup_clean() {
+function prune_backups() {
     local -r FORCE="${1}"
     local -r BACKUPS="${2}"
 
@@ -971,7 +971,7 @@ function backup() {
 
     # Cleanup backups
     if is_enabled "${CLEAN}"; then
-        backup_clean "${FORCE}" "${BACKUP_RETAIN}"
+        prune_backups "${FORCE}" "${BACKUP_RETAIN}"
     fi
 }
 
