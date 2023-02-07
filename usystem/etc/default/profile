@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # shellcheck disable=SC1113,SC2148
 #===============================================================================
 # WARNING: DO NOT EDIT
@@ -14,6 +15,7 @@ set -C              # prevent file overwrite by > &> <>
 set -E              # inherit -e
 set -o pipefail     # exit on pipe failure
 shopt -s nullglob   # loop 0 times on null glob
+shopt -s globstar   # Find files recursivly
 shopt -s extglob    # Extended Glob
 #===============================================================================
 # USYSTEM Global Variables
