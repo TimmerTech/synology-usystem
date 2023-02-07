@@ -573,7 +573,7 @@ function install() {
     local FORCE="${FORCE:-false}"
     local FORCE_CONFIG="${FORCE_CONFIG:-false}"
     local LOCAL_INSTALL=false
-    local LOG=$(log_file)
+    local -r LOG=$(log_file)
 
     # Options array for calling the repair function after install
     local CMD_REPAIR_OPTS=("--install")
@@ -680,7 +680,7 @@ function install() {
 }
 
 function repair() {
-    local LOG=$(log_file)
+    local -r LOG=$(log_file)
     local FORCE_CONFIG="${FORCE_CONFIG:-false}"
     local CONTEXT_MSG="Repairing"
     local CONTEXT_CFG="${CONTEXT_MSG}"
