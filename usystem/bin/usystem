@@ -38,9 +38,9 @@
 #%
 #% COMMANDS
 #%    backup            Backup user system
-#%    clean             Clean user system
 #%    install           Install Synology user system
 #%    link              Link user system resources to DSM
+#%    prune             Remove unused data
 #%    repair            Repair user system, used after DSM update/upgrade
 #%    upgrade           Upgrade user system to latest version
 #%    help              Show usage information
@@ -139,9 +139,9 @@
 #%    BACKUP_KEEP_LAST can be provided in the ${CLI_NAME}.conf.
 #%
 #% OPTIONS
-#%    -c, --clean               Cleanup backups after creation.
+#%    -c, --clean               Cleanup backups after creation
 #%    -f. --force               Do not prompt for confirmation
-#%    -r, --backup-retain N     Retain this number of backups.
+#%    -r, --backup-retain N     Retain this number of backups
 #%                              (default 30) [BACKUP_RETAIN]
 #%    -h, --help                Show this help
 #%
@@ -152,6 +152,26 @@
 #%
 #===============================================================================
 # BACKUP_END
+#===============================================================================
+# PRUNE
+#===============================================================================
+#% SYNOPSIS
+#+    ${CLI_NAME} prune
+#%
+#% DESCRIPTION
+#%    Remove unused data, old backups and logs
+#%
+#% OPTIONS
+#%    -a, --all                 Remove all
+#%    -b, --backups             Remove old backups
+#%    -f. --force               Do not prompt for confirmation
+#%    -l, --logs                Remove logs
+#%    -r, --backup-retain N     Retain this number of backups.
+#%                              (default 30) [BACKUP_RETAIN]
+#%    -h, --help                Show this help
+#%
+#===============================================================================
+# PRUNE_END
 #===============================================================================
 
 
@@ -695,6 +715,20 @@ function prune_backups() {
     fresult OK
 }
 
+function prune_logs() {
+    local -r FORCE="${1}"
+
+    RM_PARAMS="-rif"
+    if is_enabled "${FORCE}"; then
+        RM_PARAMS="-rf"
+    fi
+    readonly RM_PARAMS
+
+    fecho "Cleaning logs ..."
+    # shellcheck disable=SC2010
+    rm "${RM_PARAMS}" "${USYS_LOG_DIR:?}"/*
+    fresult OK
+}
 
 #===============================================================================
 # COMMANDS
@@ -984,6 +1018,63 @@ function backup() {
     fi
 }
 
+function prune() {
+    local -r LOG=$(log_file)
+    local BACKUP_RETAIN="${BACKUP_RETAIN:-30}"
+    local BACKUPS=false
+    local FORCE=false
+    local LOGS=false
+
+    # Parse options
+    while [ ${#} -gt 0 ]; do
+        case $1 in
+            -h | --help | help)
+                scriptinfo 0 prune
+            ;;
+            -a | --all)
+                BACKUPS=true
+                LOGS=true
+                shift 1
+            ;;
+            -b | --backups)
+                BACKUPS=true
+                shift 1
+            ;;
+            -f | --force)
+                FORCE=true; readonly FORCE;
+                shift 1
+            ;;
+            -l | --logs)
+                LOGS=true
+                shift 1
+            ;;
+            -r | --backup-retain)
+                BACKUP_RETAIN="${1}"; readonly BACKUP_RETAIN;
+                shift 2
+            ;;
+            * )
+                printf "unknown option: '%s'\n" "${1}"
+                scriptinfo 1 prune
+            ;;
+        esac
+    done
+
+    # Lock variables here because --all can be given in combination with
+    # --backups and --logs
+    readonly BACKUPS
+    readonly LOGS
+
+    # Clean backups
+    if is_enabled "${BACKUPS}"; then
+        prune_backups "${FORCE}" "${BACKUP_RETAIN}"
+    fi
+
+    # Clean logs
+    if is_enabled "${LOGS}"; then
+        prune_logs "${FORCE}"
+    fi
+}
+
 
 #===============================================================================
 # FINISH
@@ -1022,7 +1113,7 @@ function main() {
             shift 1
         ;;
 
-        backup | link | install | repair )
+        backup | link | install | prune | repair )
             $1 "${@:2}";
         ;;
 
