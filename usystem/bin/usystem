@@ -939,6 +939,9 @@ function backup() {
         esac
     done
 
+    # Check if we are running as root
+    is_root "${FUNCNAME[0]}"
+
     umask 022
 
     # Check if backup directory exists
