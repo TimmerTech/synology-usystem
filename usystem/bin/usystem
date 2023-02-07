@@ -573,7 +573,7 @@ EOF
 
 function replace_placeholders() {
     local -r SOURCE="${1}"
-    local -r TARGET="${2}"
+    local -r TARGET="${2:-""}"
 
     declare -A USYS_PLACEHOLDERS
     USYS_PLACEHOLDERS[{CLI_NAME}]="${CLI_NAME}"
@@ -590,7 +590,12 @@ function replace_placeholders() {
 
     for PLACEHOLDER in "${!USYS_PLACEHOLDERS[@]}"; do
         VALUE="${USYS_PLACEHOLDERS[$PLACEHOLDER]}"
-        sed "s|${PLACEHOLDER}|${VALUE}|g" "${SOURCE}" >| "${TARGET}"
+
+        if [ -n "${TARGET}" ]; then
+            sed "s|${PLACEHOLDER}|${VALUE}|g" "${SOURCE}" >| "${TARGET}"
+        else
+            sed -i "s|${PLACEHOLDER}|${VALUE}|g" "${SOURCE}"
+        fi
     done
 }
 
@@ -605,7 +610,7 @@ function install_replace_vars() {
             d
         }" "${FILE}"
 
-        replace_placeholders "${FILE}" "${FILE}"
+        replace_placeholders "${FILE}"
     done
 
 }
