@@ -683,14 +683,15 @@ function prune_backups() {
     local -r FORCE="${1}"
     local -r BACKUPS="${2}"
 
-    RM_CMD="rm -ivf"
+    RM_PARAMS="-if"
     if is_enabled "${FORCE}"; then
-        RM_CMD="rm -f"
+        RM_PARAMS="-f"
     fi
+    readonly RM_PARAMS
 
     fecho "Cleaning backups ..."
     # shellcheck disable=SC2010
-    ls -tp "${USYS_BACKUP_DIR}" | grep -v '/$' | tail -n "+$((1 + BACKUPS))" | xargs -I {} "${RM_CMD}" -- {}
+    ls -tp "${USYS_BACKUP_DIR}" | grep -v '/$' | tail -n "+$((1 + BACKUPS))" | xargs -I {} rm "${RM_PARAMS}" -- {}
     fresult OK
 }
 
