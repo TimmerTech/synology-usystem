@@ -454,7 +454,7 @@ function umount_usystem() {
         if umount "${USYS_TMP_DIR}"; then
             fresult OK
         else
-            fresult FAIL ERROR "Failed to umount, manual install required" && exit 1
+            fresult FAIL ERROR "Failed to umount, manual install required" && return 1
         fi
     fi
 
@@ -464,9 +464,11 @@ function umount_usystem() {
         if umount "${USYS_BIND_DIR}"; then
             fresult OK
         else
-            fresult FAIL ERROR "Failed to umount, manual install required" && exit 1
+            fresult FAIL ERROR "Failed to umount, manual install required" && return 1
         fi
     fi
+
+    return 0
 }
 
 # Create directories, not every directory of usystem is stored in the
@@ -921,7 +923,9 @@ function install() {
 
     # Because we have the option '--force' to perform a forced install
     # we must unmount the usystem if we are dealing with an override.
-    umount_usystem
+    if ! umount_usystem; then
+        log ERROR "Restarting 'sshd' might resolve this issue"
+    fi
 
     # Check if we are performing a local install
     # if not then remove possible present downloaded archive
@@ -1224,7 +1228,9 @@ function upgrade() {
 
     # Because we have the option '--force' to perform a forced install
     # we must unmount the usystem if we are dealing with an override.
-    umount_usystem
+    if ! umount_usystem; then
+        log ERROR "Restarting 'sshd' might resolve this issue"
+    fi
 
     # Check if we are performing a local install
     # if not then remove possible present downloaded archive
