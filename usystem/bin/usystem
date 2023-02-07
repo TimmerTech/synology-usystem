@@ -557,16 +557,16 @@ function generate_vars() {
 
     # Define install variables
     cat > "${VARS}" <<EOF
-declare -r CLI_NAME=${CLI_NAME}
-declare -r USYS_BIND_DIR=${USYS_BIND_DIR}
-declare -r USYS_VOLUME=${USYS_VOLUME}
-declare -r USYS_TARGET=${USYS_TARGET}
-declare -r USYS_ROOT=${USYS_ROOT}
-declare -r USYS_BACKUP_DIR=${USYS_BACKUP_DIR}
-declare -r USYS_CONFIG_DIR=${USYS_CONFIG_DIR}
-declare -r USYS_CONFIG=${USYS_CONFIG}
-declare -r USYS_LOG_DIR=${USYS_LOG_DIR}
-declare -r USYS_TMP_DIR=${USYS_TMP_DIR}
+declare CLI_NAME=${CLI_NAME}
+declare USYS_BIND_DIR=${USYS_BIND_DIR}
+declare USYS_VOLUME=${USYS_VOLUME}
+declare USYS_TARGET=${USYS_TARGET}
+declare USYS_ROOT=${USYS_ROOT}
+declare USYS_BACKUP_DIR=${USYS_BACKUP_DIR}
+declare USYS_CONFIG_DIR=${USYS_CONFIG_DIR}
+declare USYS_CONFIG=${USYS_CONFIG}
+declare USYS_LOG_DIR=${USYS_LOG_DIR}
+declare USYS_TMP_DIR=${USYS_TMP_DIR}
 EOF
 
 }
