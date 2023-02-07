@@ -127,6 +127,30 @@
 #===============================================================================
 # LINK_END
 #===============================================================================
+# BACKUP
+#===============================================================================
+#% SYNOPSIS
+#+    ${CLI_NAME} backup
+#%
+#% DESCRIPTION
+#%    Backup user system. After a backup is succesfully created the backup clean
+#%    will run to cleanup any backups which exceeds
+#%    the number of backups to keep.
+#%    BACKUP_KEEP_LAST can be provided in the ${CLI_NAME}.conf.
+#%
+#% OPTIONS
+#%        --backup-retain N     Retain this number of backups.
+#%                              (default 30) [BACKUP_RETAIN]
+#%    -h, --help                Show this help
+#%
+#% BACKUP_KEEP_LAST
+#%    Order of precendence, the higher the more important
+#%    - Commandline argument
+#%    - ${CLI_NAME}.conf
+#%
+#===============================================================================
+# BACKUP_END
+#===============================================================================
 
 
 #===============================================================================
@@ -188,6 +212,9 @@ declare -r  CLI_EXEC_DT="$(date +'%Y%m%d-%H%M%S')";
 declare     FORCE=false
 declare     FORCE_CONFIG=false
 declare     FORCE_PROFILE=false
+
+# Backup variables
+declare -r  BACKUP_ARCHIVE="${USYS_BACKUP_DIR}/${CLI_NAME}.backup.${CLI_EXEC_DT}.tgz"
 
 # We will now load the config from the installed location the usystem.conf.
 # The configuration will be loaded relative to this script.
@@ -342,7 +369,7 @@ function fresult() {
 }
 
 function log_file() {
-    echo "${USYS_TARGET}/${CLI_NAME}.${FUNCNAME[1]}.${CLI_EXEC_DT}.log"
+    echo "${USYS_LOG_DIR}/${CLI_NAME}.${FUNCNAME[1]}.${CLI_EXEC_DT}.log"
 }
 
 function umount_usystem() {
@@ -650,6 +677,15 @@ function link_nginx() {
     return "${RETVAL}"
 }
 
+function backup_clean() {
+    local -r BACKUPS="${1}"
+
+    fecho "Cleaning backups ..."
+    # shellcheck disable=SC2010
+    ls -tp "${USYS_BACKUP_DIR}" | grep -v '/$' | tail -n "+$((1 + BACKUPS))" | xargs -I {} rm -- {}
+    fresult OK
+}
+
 
 #===============================================================================
 # COMMANDS
@@ -660,7 +696,7 @@ function install() {
     local FORCE_CONFIG="${FORCE_CONFIG:-false}"
     local FORCE_PROFILE="${FORCE_PROFILE:-false}"
     local LOCAL_INSTALL=false
-    local -r LOG=$(log_file)
+    local -r LOG="${USYS_TARGET}/${CLI_NAME}.${FUNCNAME[1]}.${CLI_EXEC_DT}.log"
 
     # Options array for calling the repair function after install
     local CMD_REPAIR_OPTS=("--install")
@@ -740,6 +776,9 @@ function install() {
     if [ -d "${USYS_ROOT}" ] && ! is_enabled "${FORCE}"; then
         log ERROR "${USYS_ROOT} exist; please use '${CLI_NAME} upgrade'"
         exit 1
+    else
+        # We are overwriting existing install, create backup
+        backup "$@"
     fi
 
     # Because we have the option '--force' to perform a forced install
@@ -877,6 +916,42 @@ function link() {
     fi
 }
 
+function backup() {
+    local BACKUP_RETAIN="${BACKUP_RETAIN:-30}"
+    local -r LOG=$(log_file)
+
+    # Parse options
+    while [ ${#} -gt 0 ]; do
+        case $1 in
+            -h | --help | help)
+                scriptinfo 0 backup
+            ;;
+            --backup-retain)
+                BACKUP_RETAIN="${1}"
+                shift 2
+            ;;
+        esac
+    done
+
+    umask 022
+
+    # Check if backup directory exists
+    if [ ! -d "${USYS_BACKUP_DIR}" ]; then
+        mkdir -p "${USYS_BACKUP_DIR}"
+    fi
+
+    fecho "Creating backup ..."
+    if tar -czf "${BACKUP_ARCHIVE}" --exclude "${CLI_NAME}/tmp" -C "${USYS_TARGET}" "${CLI_NAME}/" > "${LOG}" 2>&1; then
+        fresult OK
+    else
+        fresult FAIL ERROR "Failed to create backup; see log: ${LOG}"
+        exit 1
+    fi
+
+    # Cleanup backups
+    backup_clean "${BACKUP_RETAIN}"
+}
+
 
 #===============================================================================
 # FINISH
@@ -915,7 +990,7 @@ function main() {
             shift 1
         ;;
 
-        link | install | repair )
+        backup | link | install | repair )
             $1 "${@:2}";
         ;;
 
