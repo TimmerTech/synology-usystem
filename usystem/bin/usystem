@@ -192,11 +192,16 @@ declare     FORCE_CONFIG=false
 # marked as readonly are not an issue. This does also provide a secondary benefit.
 # When a re-install is preformed, the user can reinstall over the current install
 # because the configuration will lock the install variables.
+# shellcheck disable=SC2059
+printf "${LOG_PFX}" "Install Source ..."
 if [[ -t 1 ]]; then
+    printf '[Terminal]\n'
     if [ -f "${CLI_DIR}/../etc/${CLI_NAME}.conf" ]; then
         # shellcheck source=../etc/default/usystem.conf
         source "${CLI_DIR}/../etc/${CLI_NAME}.conf"
     fi
+else
+    printf '[Online]\n'
 fi
 
 
