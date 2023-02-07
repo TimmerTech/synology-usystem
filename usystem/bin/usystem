@@ -128,12 +128,13 @@
 #===============================================================================
 # SHELL CONFIG
 #===============================================================================
-set -T          # inherit DEBUG and RETURN trap for functions
-set -C          # prevent file overwrite by > &> <>
-set -E          # inherit -e
-set -e          # exit immediately on errors
-set -u          # exit on not assigned variables
-set -o pipefail # exit on pipe failure
+set -T              # inherit DEBUG and RETURN trap for functions
+set -C              # prevent file overwrite by > &> <>
+set -E              # inherit -e
+set -e              # exit immediately on errors
+set -u              # exit on not assigned variables
+set -o pipefail     # exit on pipe failure
+shopt -s nullglob   # loop 0 times on null glob
 
 # Define script finish function
 trap 'finish' EXIT
@@ -559,6 +560,68 @@ function install_rc() {
     fi
 }
 
+function get_dsm_version() {
+    grep majorversion /etc.defaults/VERSION | cut -d '=' -f 2- | tr -d '"'
+}
+
+function restart_service() {
+    local -r SRV="${1}"
+    local -r LOG="${2}"
+    local -r DSM=$(get_dsm_version)
+
+    case "${DSM}" in
+        6)
+            if synoservicecfg --restart "${SRV}" >> "${LOG}" 2>&1; then
+                return 0
+            fi
+        ;;
+
+        7)
+            if systemctl restart "${SRV}" >> "${LOG}" 2>&1; then
+                return 0
+            fi
+        ;;
+    esac
+
+    return 1
+}
+
+function link_nginx() {
+    local -r LOG="${1}"
+
+    for DIR in conf.d sites.enables; do
+        for FPATH in "${USYS_CONFIG}/nginx/${DIR}"/*; do
+            FILE="$(basename "${FPATH}")"
+
+            # Check if the target file is an actual file
+            # if its a real file then we are not going to do anything
+            fecho "Link: nginx:${FILE} ..."
+            if [ ! -f "/etc/nginx/${DIR}/${FILE}" ] && [ ! -L "/etc/nginx/${DIR}/${FILE}" ]; then
+                echo "Linking: $(readlink -f "${FPATH}") => /etc/nginx/${DIR}/${FILE}" >> "${LOG}"
+                if ln -sf "$(readlink -f "${FPATH}")" "/etc/nginx/${DIR}/${FILE}" >> "${LOG}" 2>&1; then
+                    echo "Verifying Syntax for: /etc/nginx/${DIR}/${FILE}" >> "${LOG}"
+                    if nginx -t >> "${LOG}" 2>&1; then
+                        fresult OK
+                    else
+                        # Syntax of nginx failed
+                        # We want to ensure that the nginx is always running because of the DSM UI
+                        # therefor we are not allowing invalid Syntax files to persist
+                        # because of the syntax error we are now removing our created link
+                        echo "Removing link /etc/nginx/${DIR}/${FILE} because of syntax errors" >> "${LOG}"
+                        rm -f "/etc/nginx/${DIR}/${FILE}"
+                        fresult ERROR "Syntax Error; see log ${LOG}"
+                    fi
+                else
+                    fresult ERROR "Failed to create link: see log ${LOG}"
+                fi
+            else
+                echo "/etc/nginx/${DIR}/${FILE} already exists as a file" >> "${LOG}"
+                fresult SKIPPED
+            fi
+        done
+    done
+}
+
 
 #===============================================================================
 # COMMANDS
@@ -742,13 +805,32 @@ function repair() {
     # completely restore everything
     #
     # Link user system resources to OS
-    link
+    link "$@"
 }
 
 function link() {
+    local -r LOG=$(log_file)
+
+     # Parse options
+    while [ ${#} -gt 0 ]; do
+        case $1 in
+            -h | --help | help)
+                scriptinfo 0 link
+            ;;
+        esac
+    done
+
     # Check if we are running as root
     is_root "${FUNCNAME[0]}"
+
+    # Link nginx
+    link_nginx "${LOG}"
+
+    # We have linked all syntax error free nginx resources
+    # restart nginx to apply
+    restart_service nginx "${LOG}"
 }
+
 
 #===============================================================================
 # FINISH
