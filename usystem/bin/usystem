@@ -139,8 +139,9 @@
 #%    BACKUP_KEEP_LAST can be provided in the ${CLI_NAME}.conf.
 #%
 #% OPTIONS
-#%        --clean               Cleanup backups after creation
-#%        --backup-retain N     Retain this number of backups.
+#%    -c, --clean               Cleanup backups after creation.
+#%    -f. --force               Do not prompt for confirmation
+#%    -r, --backup-retain N     Retain this number of backups.
 #%                              (default 30) [BACKUP_RETAIN]
 #%    -h, --help                Show this help
 #%
@@ -679,11 +680,17 @@ function link_nginx() {
 }
 
 function backup_clean() {
-    local -r BACKUPS="${1}"
+    local -r FORCE="${1}"
+    local -r BACKUPS="${2}"
+
+    RM_CMD="rm -ivf"
+    if is_enabled "${FORCE}"; then
+        RM_CMD="rm -f"
+    fi
 
     fecho "Cleaning backups ..."
     # shellcheck disable=SC2010
-    ls -tp "${USYS_BACKUP_DIR}" | grep -v '/$' | tail -n "+$((1 + BACKUPS))" | xargs -I {} rm -- {}
+    ls -tp "${USYS_BACKUP_DIR}" | grep -v '/$' | tail -n "+$((1 + BACKUPS))" | xargs -I {} "${RM_CMD}" -- {}
     fresult OK
 }
 
@@ -921,6 +928,7 @@ function backup() {
     local BACKUP_RETAIN="${BACKUP_RETAIN:-30}"
     local -r LOG=$(log_file)
     local CLEAN=false
+    local FORCE=false
 
     # Parse options
     while [ ${#} -gt 0 ]; do
@@ -928,11 +936,15 @@ function backup() {
             -h | --help | help)
                 scriptinfo 0 backup
             ;;
-            --clean)
+            -c | --clean)
                 CLEAN=true
                 shift 1
             ;;
-            --backup-retain)
+            -f | --force)
+                FORCE=true
+                shift 1
+            ;;
+            -r | --backup-retain)
                 BACKUP_RETAIN="${1}"
                 shift 2
             ;;
@@ -959,7 +971,7 @@ function backup() {
 
     # Cleanup backups
     if is_enabled "${CLEAN}"; then
-        backup_clean "${BACKUP_RETAIN}"
+        backup_clean "${FORCE}" "${BACKUP_RETAIN}"
     fi
 }
 
