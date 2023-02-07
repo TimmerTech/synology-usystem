@@ -339,22 +339,6 @@ function fresult() {
     log "${LVL}" "${MSG}"
 }
 
-# shellcheck disable=SC2120
-function ok() {
-    local -r LVL="${1:-NONE}"
-    local -r MSG="${2:-""}"
-
-    fresult OK "${LVL}" "${MSG}"
-}
-
-# shellcheck disable=SC2120
-function fail() {
-    local -r LVL="${1:-NONE}"
-    local -r MSG="${2:-""}"
-
-    fresult FAILED "${LVL}" "${MSG}"
-}
-
 function log_file() {
     echo "${USYS_TARGET}/${CLI_NAME}.${FUNCNAME[1]}.${CLI_EXEC_DT}.log"
 }
@@ -364,9 +348,9 @@ function umount_usystem() {
     if grep " ${USYS_TMP_DIR} " /proc/mounts > /dev/null 2>&1; then
         fecho "umount ${USYS_BIND_DIR}/tmp ..."
         if umount "${USYS_TMP_DIR}"; then
-            ok
+            fresult fresult OK
         else
-            fail ERROR "Failed to umount, manual install required" && exit 1
+            fresult ERROR "Failed to umount, manual install required" && exit 1
         fi
     fi
 
@@ -374,9 +358,9 @@ function umount_usystem() {
     if grep " ${USYS_BIND_DIR} " /proc/mounts > /dev/null 2>&1; then
         fecho "umount ${USYS_BIND_DIR} ..."
         if umount "${USYS_BIND_DIR}"; then
-            ok
+            fresult OK
         else
-            fail ERROR "Failed to umount, manual install required" && exit 1
+            fresult ERROR "Failed to umount, manual install required" && exit 1
         fi
     fi
 }
@@ -476,9 +460,9 @@ function download() {
 
     fecho "Downloading usystem ..."
     if wget -L "${USYS_REPO_URL}/archive/main.tar.gz" -O "${USYS_REPO_ARCHIVE}" -o "${LOG}" > /dev/null 2>&1; then
-        ok
+        fresult OK
     else
-        fail ERROR "Failed to download usystem; see log: ${LOG}"
+        fresult ERROR "Failed to download usystem; see log: ${LOG}"
     fi
 
     return 0
@@ -514,21 +498,21 @@ function install_archive() {
 
         # Now copy the usystem to the its final destination
         if ! cp -rav "${USYS_TARGET}/install/${CLI_NAME}"/* "${USYS_ROOT}" >> "${LOG}" 2>&1; then
-            fail ERROR "Failed to move usystem; see log: ${LOG}" && exit 1
+            fresult ERROR "Failed to move usystem; see log: ${LOG}" && exit 1
         fi
 
         # Copy LICENSE to USYS_TARGET
         if ! cp -rav "${USYS_TARGET}/install/LICENSE" "${USYS_TARGET}/LICENSE" >> "${LOG}" 2>&1; then
-            fail ERROR "Failed to move LICENSE; see log: ${LOG}" && exit 1
+            fresult ERROR "Failed to move LICENSE; see log: ${LOG}" && exit 1
         fi
 
         # Remove install folder, to make sure we cleanup after ourselfs
         rm -rf "${USYS_TARGET}/install" >> "${LOG}" 2>&1
 
-        # Install OK
-        ok
+        # Install fresult OK
+        fresult OK
     else
-        fail ERROR "failed to install; see log: ${LOG}"
+        fresult ERROR "failed to install; see log: ${LOG}"
     fi
 }
 
@@ -545,9 +529,9 @@ function install_config() {
     if [ ! -f "${USYS_CONFIG}" ] || is_enabled "${FORCE_CONFIG}"; then
         fecho "${MSG} config ..."
         if cp "${USYS_CONFIG_DIR}/default/usystem.conf" "${USYS_CONFIG}"; then
-            ok
+            fresult OK
         else
-            fail ERROR "Failed to install config"
+            fresult ERROR "Failed to install config"
         fi
     fi
 }
@@ -562,16 +546,16 @@ function install_rc() {
 
     fecho "${MSG} rc.usystem ..."
     if cp "${USYS_CONFIG_DIR}/default/rc.${CLI_NAME}" /etc; then
-        ok
+        fresult OK
     else
-        fail ERROR "Failed to install rc.${CLI_NAME}" && exit 1
+        fresult ERROR "Failed to install rc.${CLI_NAME}" && exit 1
     fi
 
     fecho "${MSG} rc.local ..."
     if cp "${USYS_CONFIG_DIR}/default/rc.local" /etc; then
-        ok
+        fresult OK
     else
-        fail ERROR "Failed to install rc.local" && exit 1
+        fresult ERROR "Failed to install rc.local" && exit 1
     fi
 }
 
@@ -678,14 +662,14 @@ function install() {
     # Create directories
     fecho "Creating directories ..."
     if create_directories; then
-        ok
+        fresult OK
     else
-        fail ERROR: "Failed to create directories" && exit 1
+        fresult ERROR: "Failed to create directories" && exit 1
     fi
 
     # Fix permissions of file/folders
     if ! fix_permissions "${LOG}"; then
-        fail ERROR "Failed to repair permissions"
+        fresult ERROR "Failed to repair permissions"
     fi
 
     # Install variables in files, this step is only done during install
@@ -735,9 +719,9 @@ function repair() {
     # Fix permissions
     fecho "Repairing permissions ..."
     if fix_permissions "${LOG}"; then
-        ok
+        fresult OK
     else
-        fail ERROR "Failed to repair permissions" && exit 1
+        fresult ERROR "Failed to repair permissions" && exit 1
     fi
 
     # Install config
