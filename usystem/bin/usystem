@@ -272,6 +272,7 @@ declare -r  USYS_REPO_ARCHIVE="${USYS_REPO_ARCHIVE:-${USYS_TARGET}/${CLI_NAME}.t
 declare -r  CLI_EXEC_DT="$(date +'%Y%m%d-%H%M%S')";
 
 # Install Variables
+declare -r  VARS="${USYS_CONFIG_DIR}/default/.env"
 declare     FORCE=false
 declare     FORCE_CONFIG=false
 declare     FORCE_PROFILE=false
@@ -521,13 +522,13 @@ function fix_permissions() {
     return 0
 }
 
-function install_vars() {
+function generate_vars() {
 
     # Make sure we start with a clean environment
-    rm -f "${USYS_TARGET}/VARS.env"
+    rm -f "${VARS}"
 
     # Define install variables
-    cat > "${USYS_TARGET}/VARS.env" <<EOF
+    cat > "${VARS}" <<EOF
 declare -r CLI_NAME=${CLI_NAME}
 declare -r USYS_BIND_DIR=${USYS_BIND_DIR}
 declare -r USYS_VOLUME=${USYS_VOLUME}
@@ -540,17 +541,38 @@ declare -r USYS_LOG_DIR=${USYS_LOG_DIR}
 declare -r USYS_TMP_DIR=${USYS_TMP_DIR}
 EOF
 
+}
+
+function replace_placeholders() {
+    local -r FILE="${1}"
+
+    sed -i "s|{CLI_NAME}|${CLI_NAME}|g" "${FILE}"
+    sed -i "s|{USYS_BIND_DIR}|${USYS_BIND_DIR}|g" "${FILE}"
+    sed -i "s|{USYS_BIND_DIR}|${USYS_BIND_DIR}|g" "${FILE}"
+    sed -i "s|{USYS_VOLUME}|${USYS_VOLUME}|g" "${FILE}"
+    sed -i "s|{USYS_TARGET}|${USYS_TARGET}|g" "${FILE}"
+    sed -i "s|{USYS_ROOT}|${USYS_ROOT}|g" "${FILE}"
+    sed -i "s|{USYS_BACKUP_DIR}|${USYS_BACKUP_DIR}|g" "${FILE}"
+    sed -i "s|{USYS_CONFIG_DIR}|${USYS_CONFIG_DIR}|g" "${FILE}"
+    sed -i "s|{USYS_CONFIG}|${USYS_CONFIG}|g" "${FILE}"
+    sed -i "s|{USYS_LOG_DIR}|${USYS_LOG_DIR}|g" "${FILE}"
+    sed -i "s|{USYS_TMP_DIR}|${USYS_TMP_DIR}|g" "${FILE}"
+}
+
+function install_replace_vars() {
+    generate_vars
+
     for FILE in "${USYS_CONFIG_DIR}/default"/*; do
         # Install Variables in files
         # shellcheck disable=SC2016
         sed -i "/+++INSTALL_VARS+++/ {
-            r ${USYS_TARGET}/VARS.env
+            r ${VARS}
             d
         }" "${FILE}"
+
+        replace_placeholders "${FILE}"
     done
 
-    # Cleanup temporary install files
-    rm -f "${USYS_TARGET}/VARS.env"
 }
 
 function download() {
@@ -955,7 +977,7 @@ function install() {
     fi
 
     # Install variables in files, this step is only done during install
-    install_vars
+    install_replace_vars
 
     # Call repair user system, to finish the installation
     repair "${PARAMS[@]}"
@@ -1260,7 +1282,7 @@ function upgrade() {
     fi
 
     # Install variables in files, this step is only done during install
-    install_vars
+    install_replace_vars
 
     # Call repair user system, to finish the installation
     repair "${PARAMS[@]}"

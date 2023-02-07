@@ -12,15 +12,36 @@
 set -T              # inherit DEBUG and RETURN trap for functions
 set -C              # prevent file overwrite by > &> <>
 set -E              # inherit -e
-set -e              # exit immediately on errors
-set -u              # exit on not assigned variables
 set -o pipefail     # exit on pipe failure
 shopt -s nullglob   # loop 0 times on null glob
 shopt -s extglob    # Extended Glob
 #===============================================================================
 # USYSTEM Global Variables
 #===============================================================================
-+++INSTALL_VARS+++
+# The variables are loaded by the {CLI_NAME}.conf, the variables are printed
+# here as a reference.
+#
+# USYS_CONFIG is exported as global variable so it will be easy to source it
+# in other files, if access to the variables is required.
+#
+# CLI_NAME          : {CLI_NAME}
+# USYS_BIND_DIR     : {USYS_BIND_DIR}
+# USYS_VOLUME       : {USYS_VOLUME}
+# USYS_TARGET       : {USYS_TARGET}
+# USYS_ROOT         : {USYS_ROOT}
+# USYS_BACKUP_DIR   : {USYS_BACKUP_DIR}
+# USYS_CONFIG_DIR   : {USYS_CONFIG_DIR}
+# USYS_CONFIG       : {USYS_CONFIG}
+# USYS_LOG_DIR      : {USYS_LOG_DIR}
+# USYS_TMP_DIR      : {USYS_TMP_DIR}
+#
+# Load {CLI_NAME}.conf
+# shellcheck source=./usystem.conf
+source "{USYS_CONFIG}"
+# Export {CLI_NAME}.conf
+export USYS_CONFIG
+
+
 #===============================================================================
 # functions
 #===============================================================================
@@ -35,9 +56,6 @@ is_substring(){
 #===============================================================================
 # PATH updates
 #===============================================================================
-# Load usystem.conf
-# shellcheck source=./usystem.conf
-source "${USYS_CONFIG}"
 for P in "${PATH_ENTRIES[@]}"; do
     if ! is_substring "${P}" "${PATH}"; then
         export PATH="${P}:${PATH}"
@@ -49,7 +67,7 @@ done
 # profile.d
 #===============================================================================
 # Load all scripts from profile.d
-for PROFILE in "${USYS_CONFIG_DIR}"/profile.d/*; do
+for PROFILE in {USYS_CONFIG_DIR}/profile.d/*; do
     if [ -r "${PROFILE}" ] && bash -n "${PROFILE}"; then
         # Load profile
         # shellcheck disable=SC1090
@@ -61,7 +79,7 @@ done
 # bash_completion.d
 #===============================================================================
 # Load all bash completion
-for SCRIPT in "${USYS_CONFIG_DIR}"/bash_completion.d/*; do
+for SCRIPT in {USYS_CONFIG_DIR}/bash_completion.d/*; do
     if [ -r "${SCRIPT}" ] && bash -n "${SCRIPT}"; then
         # Load script
         # shellcheck disable=SC1090
