@@ -843,7 +843,7 @@ function link_nginx() {
     local RETVAL=0
 
     for DIR in conf.d sites.enabled; do
-        for FPATH in "${USYS_CONFIG}/nginx/${DIR}"/*; do
+        for FPATH in "${USYS_CONFIG_DIR}/nginx/${DIR}"/*; do
             FILE="$(basename "${FPATH}")"
 
             # Check if the target file is an actual file
