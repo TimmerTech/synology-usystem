@@ -488,30 +488,6 @@ function log_file() {
     echo "${USYS_LOG_DIR}/${CLI_NAME}.${FUNCNAME[1]}.${CLI_EXEC_DT}.log"
 }
 
-function umount_usystem() {
-    # unmount /usys/tmp
-    if grep " ${USYS_TMP_DIR} " /proc/mounts > /dev/null 2>&1; then
-        fecho "umount ${USYS_BIND_DIR}/tmp ..."
-        if umount "${USYS_TMP_DIR}"; then
-            fresult OK
-        else
-            fresult FAIL ERROR "Failed to umount, manual install required" && return 1
-        fi
-    fi
-
-    # umount /usys
-    if grep " ${USYS_BIND_DIR} " /proc/mounts > /dev/null 2>&1; then
-        fecho "umount ${USYS_BIND_DIR} ..."
-        if umount "${USYS_BIND_DIR}"; then
-            fresult OK
-        else
-            fresult FAIL ERROR "Failed to umount, manual install required" && return 1
-        fi
-    fi
-
-    return 0
-}
-
 # Create directories, not every directory of usystem is stored in the
 # repository. Therefor create all required directories.
 function create_directories() {
@@ -1003,12 +979,6 @@ function install() {
     else
         # We are overwriting existing install, create backup
         backup "$@"
-    fi
-
-    # Because we have the option '--force' to perform a forced install
-    # we must unmount the usystem if we are dealing with an override.
-    if ! umount_usystem; then
-        log ERROR "Restarting 'sshd' might resolve this issue"
     fi
 
     # Check if we are performing a local install

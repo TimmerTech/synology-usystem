@@ -27,22 +27,6 @@ shopt -s nullglob   # loop 0 times on null glob
 #===============================================================================
 # USYSTEM RC Functions
 #===============================================================================
-function umount_usystem() {
-    # unmount {USYS_BIND_DIR}/tmp
-    if grep " {USYS_TMP_DIR} " /proc/mounts > /dev/null 2>&1; then
-        echo "Synology User System; umount: {USYS_TMP_DIR}"
-        umount {USYS_TMP_DIR}
-    fi
-
-    # umount {USYS_BIND_DIR}
-    if grep " {USYS_BIND_DIR} " /proc/mounts > /dev/null 2>&1; then
-        echo "Synology User System; umount: {USYS_BIND_DIR}"
-        umount {USYS_BIND_DIR}
-    fi
-
-    return 0
-}
-
 function mount_usystem() {
     if ! grep " {USYS_BIND_DIR} " /proc/mounts > /dev/null 2>&1; then
         # Mount user system
@@ -102,7 +86,6 @@ case "$1" in
     ;;
     stop)
         echo "Shutting down usystem"
-        umount_usystem
         true
     ;;
     *)
