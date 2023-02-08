@@ -1289,12 +1289,6 @@ function upgrade() {
     # Create backup
     backup "$@"
 
-    # Because we have the option '--force' to perform a forced install
-    # we must unmount the usystem if we are dealing with an override.
-    if ! umount_usystem; then
-        log ERROR "Restarting 'sshd' might resolve this issue"
-    fi
-
     # Check if we are performing a local install
     # if not then remove possible present downloaded archive
     if ! is_enabled "${LOCAL_INSTALL}"; then
