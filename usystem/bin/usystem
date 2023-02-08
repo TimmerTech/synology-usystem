@@ -224,7 +224,20 @@
 #%    with the same name excluding the .tmpl extension. In these generated files
 #%    the {...} placeholders will be replaced with their corresponding values.
 #%    By default all USYS_ variables will be replaced. To replace a USYS_ value
-#%    it must be referenced as a placeholder.
+#%    it must be referenced as a placeholder. Custom place holders van be defined
+#%    in the configuration.
+#%
+#%    By default the absolute value of USYS_ROOT gets replaced with USYS_BIND_DIR.
+#%    This results in shorter paths in the generate files.
+#%    Use --real-path to turn this off.
+#%
+#%    rc.d templates will always have the real path embedded because they will be
+#%    loaded by the during boot.
+#%
+#%
+#% OPTIONS
+#%    -r, --real-path       Use real pahts
+#%    -h, --help            Show this help
 #%
 #% PLACEHOLDERS
 #%    {CLI_NAME}
@@ -572,6 +585,7 @@ EOF
 function replace_placeholders() {
     local SOURCE="${1}"
     local TARGET="${2:-""}"
+    local REAL_PATH=${3:-false}
 
     declare -A USYS_PLACEHOLDERS
     USYS_PLACEHOLDERS[{CLI_NAME}]="${CLI_NAME}"
@@ -595,6 +609,15 @@ function replace_placeholders() {
         VALUE="${USYS_PLACEHOLDERS[$PLACEHOLDER]}"
         sed -i "s|${PLACEHOLDER}|${VALUE}|g" "${SOURCE}"
     done
+
+    FILENAME="${SOURCE##*/}"
+    if ! is_enabled "${REAL_PATH}"; then
+        if ! [[ "${FILENAME}" == "rc."* ]] && ! [[ "${SOURCE}" == *"rc.d"* ]]; then
+            sed -i "s|${USYS_ROOT}|${USYS_BIND_DIR}|g" "${SOURCE}"
+        fi
+    fi
+
+
 }
 
 function install_replace_vars() {
@@ -1321,11 +1344,17 @@ function upgrade() {
 }
 
 function generate() {
+    local REAL_PATH=false
+
     # Parse options
     while [ ${#} -gt 0 ]; do
         case $1 in
             -h | --help | help)
                 scriptinfo 0 generate
+            ;;
+            -r | --real-path)
+                REAL_PATH=true; readonly REAL_PATH
+                shift 1
             ;;
             * )
                 printf "unknown option: '%s'\n" "${1}"
@@ -1344,12 +1373,16 @@ function generate() {
         DEST_BASE="$(basename "${DEST}")"
 
         log NONE "Generate: ${TMPL_BASE} => ${DEST_BASE}"
-        replace_placeholders "${TMPL}" "${DEST}"
+        replace_placeholders "${TMPL}" "${DEST}" "${REAL_PATH}"
 
         for PLACEHOLDER in "${!USER_PLACEHOLDERS[@]}"; do
             VALUE="${USER_PLACEHOLDERS[$PLACEHOLDER]}"
             sed -i "s|${PLACEHOLDER}|${VALUE}|g" "${DEST}"
         done
+
+        if ! is_enabled "${REAL_PATH}"; then
+            sed -i "s|${USYS_ROOT}|${USYS_BIND_DIR}|g" "${DEST}"
+        fi
     done
 }
 
