@@ -236,7 +236,8 @@
 #%
 #%
 #% OPTIONS
-#%    -r, --real-path       Use real pahts
+#%    -p, --real-path       Use real pahts
+#%    -r, --reload          Reload profile in shell
 #%    -h, --help            Show this help
 #%
 #% PLACEHOLDERS
@@ -1320,6 +1321,7 @@ function upgrade() {
 
 function generate() {
     local REAL_PATH=false
+    local RELOAD=false
 
     # Parse options
     while [ ${#} -gt 0 ]; do
@@ -1327,8 +1329,12 @@ function generate() {
             -h | --help | help)
                 scriptinfo 0 generate
             ;;
-            -r | --real-path)
+            -p | --real-path)
                 REAL_PATH=true; readonly REAL_PATH
+                shift 1
+            ;;
+            -r | --reload)
+                RELOAD=true; readonly RELOAD
                 shift 1
             ;;
             * )
@@ -1360,6 +1366,10 @@ function generate() {
             sed -i "s|${USYS_ROOT}|${USYS_BIND_DIR}|g" "${DEST}"
         fi
     done
+
+    if is_enabled "${RELOAD}"; then
+        kill -USR1 $PPID
+    fi
 }
 
 #===============================================================================
