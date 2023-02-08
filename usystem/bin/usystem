@@ -1247,6 +1247,11 @@ function prune() {
         esac
     done
 
+    if [ "${#}" == 0 ]; then
+        printf '%s\n' "no options provided"
+        scriptinfo 1 prune
+    fi
+
     # Lock variables here because --all can be given in combination with
     # --backups and --logs
     readonly BACKUPS
