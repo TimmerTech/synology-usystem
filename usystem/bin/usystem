@@ -234,7 +234,6 @@
 #%    rc.d templates will always have the real path embedded because they will be
 #%    loaded by the during boot.
 #%
-#%
 #% OPTIONS
 #%    -p, --real-path       Use real pahts
 #%    -r, --reload          Reload profile in shell
