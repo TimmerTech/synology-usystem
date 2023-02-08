@@ -42,6 +42,7 @@
 #%    install           Install Synology user system
 #%    link              Link user system resources to DSM
 #%    prune             Remove unused data
+#%    reload            Reload profile in shell
 #%    repair            Repair user system, used after DSM update/upgrade
 #%    upgrade           Upgrade user system to latest version
 #%    help              Show usage information
@@ -253,6 +254,20 @@
 #%
 #===============================================================================
 # GENERATE_END
+#===============================================================================
+# RELOAD
+#===============================================================================
+#% SYNOPSIS
+#+    ${CLI_NAME} reload
+#%
+#% DESCRIPTION
+#%    This will reload the profile in the parent shell.
+#%
+#% OPTIONS
+#%    -h, --help            Show this help
+#%
+#===============================================================================
+# RELOAD_END
 #===============================================================================
 
 
@@ -1371,6 +1386,29 @@ function generate() {
     fi
 }
 
+function reload() {
+    # Parse options
+    while [ ${#} -gt 0 ]; do
+        case $1 in
+            -h | --help | help)
+                scriptinfo 0 reload
+            ;;
+            * )
+                printf "unknown option: '%s'\n" "${1}"
+                scriptinfo 1 reload
+            ;;
+        esac
+    done
+
+    # Check if we are running as root
+    is_root "${FUNCNAME[0]}"
+
+    # Issue reload command to parent shell
+    fecho "Reloading environment ..."
+    kill -USR1 $PPID
+    fresult OK
+}
+
 #===============================================================================
 # FINISH
 #
@@ -1408,7 +1446,7 @@ function main() {
             shift 1
         ;;
 
-        backup | generate | link | install | prune | repair | upgrade )
+        backup | generate | link | install | prune | reload | repair | upgrade )
             $1 "${@:2}";
         ;;
 

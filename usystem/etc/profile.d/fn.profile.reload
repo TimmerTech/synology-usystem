@@ -1,0 +1,28 @@
+# shellcheck shell=bash
+#===============================================================================
+# Profile reload
+#===============================================================================
+#
+# This is a special function that is loaded into the parent shell the moment
+# the user system is booted by Synology DSM
+# It allows for reloading of the profile into the parent shell.
+#
+# There is a lot of controversy around this topic. But the short anwser is
+# YES, you can reload the profile into the parent shell from a child process.
+# It does however require some prior set up which what this file is responsible
+# for.
+#
+# The fucntion _profile_reload gets loaded in the parent shell, when the profile
+# is sourced when the user system starts. Then it will listen for USR1 signal.
+# If the USR1 signal is send to the shell it will auto reload the profile.
+#
+# To reload from a command / child process, issue the following command
+# `kill -USR1 $PPID` and it will send the USR1 signal to the parent process
+# which will trigger the reload below.
+#
+#===============================================================================
+function _profile_reload() {
+   # shellcheck disable=SC1091
+   . /etc/profile
+}
+trap '_profile_reload' USR1
