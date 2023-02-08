@@ -75,7 +75,7 @@ EOF
 #===============================================================================
 case "$1" in
     start)
-        echo "Synology User System: boot"
+        echo "Synology User System: starting"
         if test -n "{USYS_ROOT}"; then
             mount_usystem
             link_profile
