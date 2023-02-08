@@ -318,11 +318,9 @@ declare -r  BACKUP_ARCHIVE="${USYS_BACKUP_DIR}/${CLI_NAME}.backup.${CLI_EXEC_DT}
 # When a re-install is preformed, the user can reinstall over the current install
 # because the configuration will lock the install variables.
 # shellcheck disable=SC2059
-if [[ -t 1 ]]; then
-    if [ -f "${CLI_DIR}/../etc/${CLI_NAME}.conf" ]; then
-        # shellcheck source=../etc/default/usystem.conf
-        source "${CLI_DIR}/../etc/${CLI_NAME}.conf"
-    fi
+if [ -f "${USYS_CONFIG}" ]; then
+    # shellcheck source=../etc/default/usystem.conf
+    source "${USYS_CONFIG}"
 fi
 
 
@@ -572,8 +570,8 @@ EOF
 }
 
 function replace_placeholders() {
-    local -r SOURCE="${1}"
-    local -r TARGET="${2:-""}"
+    local SOURCE="${1}"
+    local TARGET="${2:-""}"
 
     declare -A USYS_PLACEHOLDERS
     USYS_PLACEHOLDERS[{CLI_NAME}]="${CLI_NAME}"
@@ -588,14 +586,14 @@ function replace_placeholders() {
     USYS_PLACEHOLDERS[{USYS_LOG_DIR}]="${USYS_LOG_DIR}"
     USYS_PLACEHOLDERS[{USYS_TMP_DIR}]="${USYS_TMP_DIR}"
 
+    if [ -n "${TARGET}" ]; then
+        cp -f "${SOURCE}" "${TARGET}"
+        SOURCE="${TARGET}"
+    fi
+
     for PLACEHOLDER in "${!USYS_PLACEHOLDERS[@]}"; do
         VALUE="${USYS_PLACEHOLDERS[$PLACEHOLDER]}"
-
-        if [ -n "${TARGET}" ]; then
-            sed "s|${PLACEHOLDER}|${VALUE}|g" "${SOURCE}" >| "${TARGET}"
-        else
-            sed -i "s|${PLACEHOLDER}|${VALUE}|g" "${SOURCE}"
-        fi
+        sed -i "s|${PLACEHOLDER}|${VALUE}|g" "${SOURCE}"
     done
 }
 
@@ -1350,7 +1348,7 @@ function generate() {
 
         for PLACEHOLDER in "${!USER_PLACEHOLDERS[@]}"; do
             VALUE="${USER_PLACEHOLDERS[$PLACEHOLDER]}"
-            sed "s|${PLACEHOLDER}|${VALUE}|g" "${TMPL}" >| "${DEST}"
+            sed -i "s|${PLACEHOLDER}|${VALUE}|g" "${DEST}"
         done
     done
 }
