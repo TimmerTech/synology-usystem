@@ -910,7 +910,10 @@ function prune_logs() {
 }
 
 function profile_reload() {
+    # Issue reload command to parent shell
+    fecho "Reloading environment ..."
     kill -USR1 $PPID
+    fresult OK
 }
 
 #===============================================================================
@@ -1416,9 +1419,7 @@ function reload() {
     is_root "${FUNCNAME[0]}"
 
     # Issue reload command to parent shell
-    fecho "Reloading environment ..."
     profile_reload
-    fresult OK
 }
 
 #===============================================================================
