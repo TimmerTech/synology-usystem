@@ -1114,6 +1114,9 @@ function repair() {
     # install and overwrite an existing installation
     /etc/rc.local
 
+    # Reload parent shell environment
+    profile_reload
+
     # Repair completed, now link/re-link all usystem resources back to the OS
     # This will a user to only issue the repair command after a DSM upgrade to
     # completely restore everything
