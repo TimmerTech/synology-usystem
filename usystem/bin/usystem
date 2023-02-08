@@ -581,6 +581,13 @@ function replace_placeholders() {
         SOURCE="${TARGET}"
     fi
 
+    # Replace {USYS_INSTALL_VARS}
+    # shellcheck disable=SC2016
+    sed -i "/{USYS_INSTALL_VARS}/ {
+        r ${VARS}
+        d
+    }" "${SOURCE}"
+
     for PLACEHOLDER in "${!USYS_PLACEHOLDERS[@]}"; do
         VALUE="${USYS_PLACEHOLDERS[$PLACEHOLDER]}"
         sed -i "s|${PLACEHOLDER}|${VALUE}|g" "${SOURCE}"
@@ -588,11 +595,12 @@ function replace_placeholders() {
 
     FILENAME="${SOURCE##*/}"
     if ! is_enabled "${REAL_PATH}"; then
-        if [[ ! "${FILENAME}" == "rc."* ]] && [[ ! "${SOURCE}" == *"rc.d"* ]]; then
+        echo "$SOURCE"
+        if [[ ! "${FILENAME}" == "rc."* ]] && [[ ! "${SOURCE}" == *"rc.d"* ]] && [[ ! "${FILENAME}" == "${CLI_NAME}.conf" ]]; then
+            echo "Replace: $SOURCE"
             sed -i "s|${USYS_ROOT}|${USYS_BIND_DIR}|g" "${SOURCE}"
         fi
     fi
-
 
 }
 
@@ -601,12 +609,6 @@ function install_replace_vars() {
 
     for FILE in "${USYS_CONFIG_DIR}/default"/*; do
         # Install Variables in files
-        # shellcheck disable=SC2016
-        sed -i "/+++INSTALL_VARS+++/ {
-            r ${VARS}
-            d
-        }" "${FILE}"
-
         replace_placeholders "${FILE}"
     done
 
