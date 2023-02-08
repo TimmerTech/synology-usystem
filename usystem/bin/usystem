@@ -284,6 +284,7 @@ declare     CLI_NAME="${CLI_NAME:-usystem}"
 
 # CLI Version
 declare -r  CLI_VERSION=1.0.0;
+# shellcheck disable=SC2034
 declare -r  CLI_DIR="$( cd "$(dirname "$0")" && pwd )";
 
 # Logging
@@ -332,7 +333,7 @@ declare -r  BACKUP_ARCHIVE="${USYS_BACKUP_DIR}/${CLI_NAME}.backup.${CLI_EXEC_DT}
 # because the configuration will lock the install variables.
 # shellcheck disable=SC2059
 if [ -f "${USYS_CONFIG}" ]; then
-    # shellcheck source=../etc/default/usystem.conf
+    # shellcheck disable=SC1090
     source "${USYS_CONFIG}"
 fi
 
@@ -897,6 +898,9 @@ function prune_logs() {
 # COMMANDS
 #===============================================================================
 function install() {
+    local -r LOG="${USYS_TARGET}/${CLI_NAME}.${FUNCNAME[1]}.${CLI_EXEC_DT}.log"
+
+    # shellcheck disable=SC2206
     local PARAMS=($@)
     PARAMS+=("--install")
     remove_from_array PARAMS "--force"
@@ -905,7 +909,6 @@ function install() {
     local FORCE_CONFIG="${FORCE_CONFIG:-false}"
     local FORCE_PROFILE="${FORCE_PROFILE:-false}"
     local LOCAL_INSTALL=false
-    local -r LOG="${USYS_TARGET}/${CLI_NAME}.${FUNCNAME[1]}.${CLI_EXEC_DT}.log"
 
     # Parse options
     while [ ${#} -gt 0 ]; do
@@ -1240,6 +1243,8 @@ function prune() {
 
 function upgrade() {
     local -r LOG=$(log_file)
+
+    # shellcheck disable=SC2206
     local PARAMS=($@)
     PARAMS+=("--upgrade")
     remove_from_array PARAMS "--local"
@@ -1345,6 +1350,7 @@ function generate() {
         log NONE "Generate: ${TMPL_BASE} => ${DEST_BASE}"
         replace_placeholders "${TMPL}" "${DEST}" "${REAL_PATH}"
 
+        # shellcheck disable=SC2153
         for PLACEHOLDER in "${!USER_PLACEHOLDERS[@]}"; do
             VALUE="${USER_PLACEHOLDERS[$PLACEHOLDER]}"
             sed -i "s|${PLACEHOLDER}|${VALUE}|g" "${DEST}"
