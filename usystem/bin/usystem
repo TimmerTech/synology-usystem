@@ -1216,6 +1216,11 @@ function prune() {
     local FORCE=false
     local LOGS=false
 
+    if [[ ${#} -eq 0 ]]; then
+        printf '%s\n' "no options provided"
+        scriptinfo 1 prune
+    fi
+
     # Parse options
     while [ ${#} -gt 0 ]; do
         case $1 in
@@ -1249,11 +1254,6 @@ function prune() {
             ;;
         esac
     done
-
-    if [ "${#}" == 0 ]; then
-        printf '%s\n' "no options provided"
-        scriptinfo 1 prune
-    fi
 
     # Lock variables here because --all can be given in combination with
     # --backups and --logs
