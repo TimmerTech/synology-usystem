@@ -595,9 +595,7 @@ function replace_placeholders() {
 
     FILENAME="${SOURCE##*/}"
     if ! is_enabled "${REAL_PATH}"; then
-        echo "$SOURCE"
         if [[ ! "${FILENAME}" == "rc."* ]] && [[ ! "${SOURCE}" == *"rc.d"* ]] && [[ ! "${FILENAME}" == "${CLI_NAME}.conf" ]]; then
-            echo "Replace: $SOURCE"
             sed -i "s|${USYS_ROOT}|${USYS_BIND_DIR}|g" "${SOURCE}"
         fi
     fi
