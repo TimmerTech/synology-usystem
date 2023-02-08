@@ -273,7 +273,7 @@ trap 'finish' EXIT
 
 
 #===============================================================================
-# GLOBAL VARS
+# GLOBAL variables
 #===============================================================================
 # CLI_NAME
 # Name of the CLI command. This can be overriden during install.
@@ -294,7 +294,7 @@ declare -rA LOG_LEVELS=([NONE]=0 [DEBUG]=1 [INFO]=2 [WARN]=3 [ERROR]=4);
 declare -r  LOG_PFX='%-32s '
 declare     LOG_LEVEL="${LOG_LEVEL:-INFO}";
 
-# User System VARS
+# User system variables
 declare     USYS_BIND_DIR="${USYS_BIND_DIR:-/usys}"
 declare     USYS_VOLUME="${USYS_VOLUME:-/volume1}";
 declare     USYS_TARGET="${USYS_TARGET:-"${USYS_VOLUME}/@${CLI_NAME}"}";
@@ -305,7 +305,7 @@ declare     USYS_LOG_DIR="${USYS_LOG_DIR:-${USYS_ROOT}/log}";
 declare     USYS_TMP_DIR="${USYS_TMP_DIR:-${USYS_ROOT}/tmp}";
 declare     USYS_CONFIG="${USYS_CONFIG:-${USYS_CONFIG_DIR}/${CLI_NAME}.conf}"
 
-# User System Repository
+# User system Repository
 declare -r  USYS_REPO_URL="${USYS_REPO_URL:-https://github.com/TimmerTech/synology-usystem}";
 declare -r  USYS_REPO_ARCHIVE="${USYS_REPO_ARCHIVE:-${USYS_TARGET}/${CLI_NAME}.tgz}";
 
@@ -313,7 +313,7 @@ declare -r  USYS_REPO_ARCHIVE="${USYS_REPO_ARCHIVE:-${USYS_TARGET}/${CLI_NAME}.t
 declare -r  CLI_EXEC_DT="$(date +'%Y%m%d-%H%M%S')";
 
 # Install Variables
-declare -r  VARS="${USYS_CONFIG_DIR}/default/.env"
+declare -r  USYS_VARS="${USYS_CONFIG_DIR}/default/.env"
 declare     FORCE=false
 declare     FORCE_CONFIG=false
 declare     FORCE_PROFILE=false
@@ -540,10 +540,10 @@ function fix_permissions() {
 function generate_vars() {
 
     # Make sure we start with a clean environment
-    rm -f "${VARS}"
+    rm -f "${USYS_VARS}"
 
     # Define install variables
-    cat >| "${VARS}" <<EOF
+    cat >| "${USYS_VARS}" <<EOF
 declare CLI_NAME=${CLI_NAME}
 declare USYS_BIND_DIR=${USYS_BIND_DIR}
 declare USYS_VOLUME=${USYS_VOLUME}
@@ -584,7 +584,7 @@ function replace_placeholders() {
     # Replace {USYS_INSTALL_VARS}
     # shellcheck disable=SC2016
     sed -i "/{USYS_INSTALL_VARS}/ {
-        r ${VARS}
+        r ${USYS_VARS}
         d
     }" "${SOURCE}"
 
