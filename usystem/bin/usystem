@@ -313,7 +313,7 @@ declare -r  USYS_REPO_ARCHIVE="${USYS_REPO_ARCHIVE:-${USYS_TARGET}/${CLI_NAME}.t
 declare -r  CLI_EXEC_DT="$(date +'%Y%m%d-%H%M%S')";
 
 # Install Variables
-declare -r  USYS_VARS="${USYS_CONFIG_DIR}/default/.env"
+declare -r  USYS_ENV_VARS="${USYS_CONFIG_DIR}/default/.env"
 declare     FORCE=false
 declare     FORCE_CONFIG=false
 declare     FORCE_PROFILE=false
@@ -540,10 +540,10 @@ function fix_permissions() {
 function generate_vars() {
 
     # Make sure we start with a clean environment
-    rm -f "${USYS_VARS}"
+    rm -f "${USYS_ENV_VARS}"
 
     # Define install variables
-    cat >| "${USYS_VARS}" <<EOF
+    cat >| "${USYS_ENV_VARS}" <<EOF
 declare CLI_NAME=${CLI_NAME}
 declare USYS_BIND_DIR=${USYS_BIND_DIR}
 declare USYS_VOLUME=${USYS_VOLUME}
@@ -581,10 +581,10 @@ function replace_placeholders() {
         SOURCE="${TARGET}"
     fi
 
-    # Replace {USYS_INSTALL_VARS}
+    # Replace {USYS_ENV_VARS}
     # shellcheck disable=SC2016
-    sed -i "/{USYS_INSTALL_VARS}/ {
-        r ${USYS_VARS}
+    sed -i "/{USYS_ENV_VARS}/ {
+        r ${USYS_ENV_VARS}
         d
     }" "${SOURCE}"
 
