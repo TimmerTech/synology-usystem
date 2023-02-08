@@ -875,7 +875,7 @@ function link_nginx() {
         done
     done
 
-    return "${RETVAL}"
+    return ${RETVAL}
 }
 
 function prune_backups() {
@@ -1148,10 +1148,11 @@ function link() {
     is_root "${FUNCNAME[0]}"
 
     # Link nginx
-    if [[ "$(link_nginx "${LOG}")" == 2 ]]; then
-        # We have linked syntax error free resources, nginx restart is required
-        servicectl nginx restart "${LOG}"
-    fi
+    link_nginx "${LOG}"; EC=$?;
+    case ${EC} in
+        2) servicectl nginx restart "${LOG}" ;;
+        *) ;;
+    esac
 }
 
 function backup() {
