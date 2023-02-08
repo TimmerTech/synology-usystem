@@ -1350,7 +1350,7 @@ function generate() {
 
         for PLACEHOLDER in "${!USER_PLACEHOLDERS[@]}"; do
             VALUE="${USER_PLACEHOLDERS[$PLACEHOLDER]}"
-            sed "s|${PLACEHOLDER}|${VALUE}|g" "${SOURCE}" >| "${TARGET}"
+            sed "s|${PLACEHOLDER}|${VALUE}|g" "${TMPL}" >| "${DEST}"
         done
     done
 }
