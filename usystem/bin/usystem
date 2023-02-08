@@ -1148,7 +1148,7 @@ function link() {
     is_root "${FUNCNAME[0]}"
 
     # Link nginx
-    if [ "$(link_nginx "${LOG}")" = 2 ]; then
+    if [[ "$(link_nginx "${LOG}")" == 2 ]]; then
         # We have linked syntax error free resources, nginx restart is required
         servicectl nginx restart "${LOG}"
     fi
