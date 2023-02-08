@@ -909,6 +909,10 @@ function prune_logs() {
     fresult OK
 }
 
+function profile_reload() {
+    kill -USR1 $PPID
+}
+
 #===============================================================================
 # COMMANDS
 #===============================================================================
@@ -1382,7 +1386,7 @@ function generate() {
     done
 
     if is_enabled "${RELOAD}"; then
-        kill -USR1 $PPID
+        profile_reload
     fi
 }
 
@@ -1405,7 +1409,7 @@ function reload() {
 
     # Issue reload command to parent shell
     fecho "Reloading environment ..."
-    kill -USR1 $PPID
+    profile_reload
     fresult OK
 }
 
