@@ -842,16 +842,19 @@ function link_nginx() {
     local -r LOG="${1}"
     local RETVAL=0
 
-    for DIR in conf.d sites.enabled; do
+    # Set umask
+    umask 022
+
+    for DIR in conf.d sites-enabled; do
         for FPATH in "${USYS_CONFIG_DIR}/nginx/${DIR}"/*; do
             FILE="$(basename "${FPATH}")"
 
             # Check if the target file is an actual file
             # if its a real file then we are not going to do anything
-            fecho "Link: nginx:${FILE} ..."
+            fecho "nginx:${FILE} ..."
             if [ ! -f "/etc/nginx/${DIR}/${FILE}" ] && [ ! -L "/etc/nginx/${DIR}/${FILE}" ]; then
-                echo "Linking: $(readlink -f "${FPATH}") => /etc/nginx/${DIR}/${FILE}" >> "${LOG}"
-                if ln -sf "$(readlink -f "${FPATH}")" "/etc/nginx/${DIR}/${FILE}" >> "${LOG}" 2>&1; then
+                echo "Linking: $(readlink -e "${FPATH}") => /etc/nginx/${DIR}/${FILE}" >> "${LOG}"
+                if ln -sf "$(readlink -e "${FPATH}")" "/etc/nginx/${DIR}/${FILE}" >> "${LOG}" 2>&1; then
                     echo "Verifying Syntax for: /etc/nginx/${DIR}/${FILE}" >> "${LOG}"
                     if nginx -t >> "${LOG}" 2>&1; then
                         fresult OK
@@ -1146,6 +1149,11 @@ function link() {
 
     # Check if we are running as root
     is_root "${FUNCNAME[0]}"
+
+    log NONE "Linking resources"
+
+    # Set umask
+    umask 022
 
     # Link nginx
     link_nginx "${LOG}"; EC=$?;
