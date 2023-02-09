@@ -853,8 +853,8 @@ function link_nginx() {
             # if its a real file then we are not going to do anything
             fecho "nginx:${FILE} ..."
             if [ ! -f "/etc/nginx/${DIR}/${FILE}" ] && [ ! -L "/etc/nginx/${DIR}/${FILE}" ]; then
-                echo "Linking: $(readlink -e "${FPATH}") => /etc/nginx/${DIR}/${FILE}" >> "${LOG}"
-                if ln -sf "$(readlink -e "${FPATH}")" "/etc/nginx/${DIR}/${FILE}" >> "${LOG}" 2>&1; then
+                echo "Linking: $(readlink -f "${FPATH}") => /etc/nginx/${DIR}/${FILE}" >> "${LOG}"
+                if ln -sf "$(readlink -f "${FPATH}")" "/etc/nginx/${DIR}/${FILE}" >> "${LOG}" 2>&1; then
                     echo "Verifying Syntax for: /etc/nginx/${DIR}/${FILE}" >> "${LOG}"
                     if nginx -t >> "${LOG}" 2>&1; then
                         fresult OK
