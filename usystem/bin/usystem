@@ -840,7 +840,6 @@ function servicectl() {
 #  2    Restart nginx required
 function link_nginx() {
     local -r LOG="${1}"
-    local RETVAL=0
 
     # Set umask
     umask 022
@@ -858,7 +857,6 @@ function link_nginx() {
                     echo "Verifying Syntax for: /etc/nginx/${DIR}/${FILE}" >> "${LOG}"
                     if nginx -t >> "${LOG}" 2>&1; then
                         fresult OK
-                        RETVAL=2
                     else
                         # Syntax of nginx failed
                         # We want to ensure that the nginx is always running because of the DSM UI
@@ -878,7 +876,7 @@ function link_nginx() {
         done
     done
 
-    return ${RETVAL}
+    return 0
 }
 
 function prune_backups() {
@@ -1156,11 +1154,8 @@ function link() {
     umask 022
 
     # Link nginx
-    link_nginx "${LOG}"; EC=$?;
-    case ${EC} in
-        2) servicectl nginx restart "${LOG}" ;;
-        *) ;;
-    esac
+    link_nginx "${LOG}";
+    servicectl nginx restart "${LOG}"
 }
 
 function backup() {
