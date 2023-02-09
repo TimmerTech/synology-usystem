@@ -813,16 +813,25 @@ function servicectl() {
     local -r LOG="${3}"
     local -r DSM=$(get_dsm_version)
 
+    fecho "${SRV}:${CTL} ..."
     case "${DSM}" in
         6)
             if synoservicecfg "--${CTL}" "${SRV}" >> "${LOG}" 2>&1; then
+                fresult OK
                 return 0
+            else
+                fresult FAIL
+                return 1
             fi
         ;;
 
         7)
             if systemctl "${CTL}" "${SRV}" >> "${LOG}" 2>&1; then
+                fresult OK
                 return 0
+            else
+                fresult FAIL
+                return 1
             fi
         ;;
     esac
