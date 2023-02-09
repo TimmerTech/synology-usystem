@@ -512,7 +512,7 @@ function create_directories() {
         etc/bash_completion.d
         etc/certs
         etc/nginx/conf.d
-        etc/nginx/sites.enabled
+        etc/nginx/sites-enabled
         log
         reports
         sbin
