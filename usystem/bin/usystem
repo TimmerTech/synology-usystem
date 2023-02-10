@@ -411,11 +411,13 @@ function scriptinfo() {
                 scriptinfo_part IMPLEMENTATION "${FILTER}" |
                 scriptinfo_replace_var CLI_NAME |
                 scriptinfo_replace_var CLI_VERSION |
+                scriptinfo_replace_var USYS_BIND_DIR |
                 scriptinfo_replace_var USYS_VOLUME |
                 scriptinfo_replace_var USYS_TARGET |
                 scriptinfo_replace_var USYS_ROOT |
                 scriptinfo_replace_var USYS_BACKUP_DIR |
                 scriptinfo_replace_var USYS_CONFIG_DIR |
+                scriptinfo_replace_var USYS_CONFIG |
                 scriptinfo_replace_var USYS_LOG_DIR |
                 scriptinfo_replace_var USYS_TMP_DIR |
                 scriptinfo_replace_var USYS_REPO_URL
