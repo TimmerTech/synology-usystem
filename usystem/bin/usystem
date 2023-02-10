@@ -902,8 +902,13 @@ function link_nginx() {
                     fresult FAIL ERROR "Failed to create link: see log ${LOG}"
                 fi
             else
-                echo "/etc/nginx/${DIR}/${FILE} already exists as a file" >> "${LOG}"
-                fresult SKIPPED
+                if [ -L "/etc/nginx/${DIR}/${FILE}" ]; then
+                    echo "/etc/nginx/${DIR}/${FILE} already linked" >> "${LOG}"
+                    fresult LINKED
+                else
+                    echo "/etc/nginx/${DIR}/${FILE} already exists as a file" >> "${LOG}"
+                    fresult SKIPPED
+                fi
             fi
         done
     done
