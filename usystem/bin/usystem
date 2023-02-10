@@ -868,7 +868,7 @@ function link_nginx() {
     # that this function will return '1' which is an error in bash therefor
     # we are checking in the link command for any exit code not '0'. For this
     # will mean we have to restart nginx
-    LINK=0
+    RETVAL=0
     for DIR in conf.d sites-enabled; do
         for FPATH in "${USYS_CONFIG_DIR}/nginx/${DIR}"/*; do
             FILE="$(basename "${FPATH}")"
@@ -880,7 +880,7 @@ function link_nginx() {
                 echo "Linking: $(readlink -f "${FPATH}") => /etc/nginx/${DIR}/${FILE}" >> "${LOG}"
                 if ln -sf "$(readlink -f "${FPATH}")" "/etc/nginx/${DIR}/${FILE}" >> "${LOG}" 2>&1; then
                     echo "Verifying Syntax for: /etc/nginx/${DIR}/${FILE}" >> "${LOG}"
-                    LINK++
+                    RETVAL++
                     if nginx -t >> "${LOG}" 2>&1; then
                         fresult OK
                     else
@@ -891,7 +891,7 @@ function link_nginx() {
                         echo "Removing link /etc/nginx/${DIR}/${FILE} because of syntax errors" >> "${LOG}"
                         rm -f "/etc/nginx/${DIR}/${FILE}"
                         fresult FAIL ERROR "Syntax Error; see log ${LOG}"
-                        LINK--
+                        RETVAL--
                     fi
                 else
                     fresult FAIL ERROR "Failed to create link: see log ${LOG}"
@@ -903,7 +903,7 @@ function link_nginx() {
         done
     done
 
-    return ${LINK}
+    return ${RETVAL}
 }
 
 function prune_backups() {
