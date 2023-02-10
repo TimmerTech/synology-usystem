@@ -839,7 +839,7 @@ function servicectl() {
         ;;
 
         7)
-            if systemctl "${CTL}" "${SRV}" >> "${LOG}" 2>&1; then
+            if synosystemctl "${CTL}" "${SRV}" >> "${LOG}" 2>&1; then
                 fresult OK
                 return 0
             else
@@ -1218,8 +1218,8 @@ function link() {
     # Link nginx
     link_nginx "${LOG}"; EC=$?
     if is_enabled "${FORCE}" || ( [[ "${EC}" != 0 ]] && is_enabled "${APPLY}" ); then
-        if is_enabled "${FORCE}" || confirm "Restart nginx?"; then
-            servicectl nginx restart "${LOG}"
+        if is_enabled "${FORCE}" || confirm "Reload nginx?"; then
+            servicectl nginx reload "${LOG}"
         fi
     fi
 }
