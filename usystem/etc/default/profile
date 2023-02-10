@@ -98,3 +98,55 @@ for SCRIPT in {USYS_CONFIG_DIR}/bash_completion.d/*; do
         ;;
     esac
 done
+
+
+#===============================================================================
+# HISTORY
+#===============================================================================
+HISTSIZE=-1
+HISTFILESIZE=-1
+export HISTSIZE
+export HISTFILESIZE
+
+
+#===============================================================================
+# Aliases
+#===============================================================================
+# switch to root user in same directory
+alias root='sudo su root -c "cd `pwd`; /bin/bash --login"'
+
+# Fitler @ directories, alias disable by default
+#alias ls='ls --color=auto --ignore=\@* --ignore=#*'
+
+alias ll='ls -la --color=auto'
+alias l.='ls -d .* --color=auto'
+
+alias df='df -h |grep -v loop'
+alias grep='grep --color'
+
+alias cd..='cd ..'
+alias ..='cd ..'
+alias ...='cd ../../../'
+alias ....='cd ../../../../'
+alias .....='cd ../../../../'
+alias .4='cd ../../../../'
+alias .5='cd ../../../../..'
+
+## Colorize the grep command output for ease of use (good for log files)##
+alias grep='grep --color=auto'
+alias egrep='egrep --color=auto'
+alias fgrep='fgrep --color=auto'
+
+# mkdir
+alias mkdir='mkdir -pv'
+
+# format mount
+# this requires entware, and the installation of the column packages
+#alias mount='mount |column -t'
+
+# ping
+#alias ping='ping -c 4'; # set ping to 4 packets
+alias fastping='ping -c 100 -s.2'; # do not wait 1 sec, go fast
+
+# ports
+alias ports='netstat -tulanp'
