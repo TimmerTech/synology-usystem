@@ -245,6 +245,11 @@
 #% OPTIONS
 #%    -p, --real-path       Use real pahts
 #%    -r, --reload          Reload profile in shell
+#%    -l, --link            Run link after generation
+#%    -y, --apply           Apply processed links, this will restart services
+#%                          if required. Omitting this will require the user to
+#%                          restart the services self.
+#%    -f. --force           Do not prompt for confirmation
 #%    -h, --help            Show this help
 #%
 #% PLACEHOLDERS
@@ -1410,6 +1415,9 @@ function upgrade() {
 function generate() {
     local REAL_PATH=false
     local RELOAD=false
+    local LINK=false
+
+    local -a LINK_PARAMS=()
 
     # Parse options
     while [ ${#} -gt 0 ]; do
@@ -1418,11 +1426,23 @@ function generate() {
                 scriptinfo 0 generate
             ;;
             -p | --real-path)
-                REAL_PATH=true; readonly REAL_PATH
+                REAL_PATH=true; readonly REAL_PATH;
                 shift 1
             ;;
             -r | --reload)
-                RELOAD=true; readonly RELOAD
+                RELOAD=true; readonly RELOAD;
+                shift 1
+            ;;
+            -l | --link)
+                LINK=true; readonly LINK;
+                shift 1
+            ;;
+            -y | --apply)
+                LINK_PARAMS+=("--apply")
+                shift 1;
+            ;;
+            -f | --force)
+                LINK_PARAMS+=("--force")
                 shift 1
             ;;
             * )
@@ -1457,6 +1477,10 @@ function generate() {
 
     if is_enabled "${RELOAD}"; then
         profile_reload
+    fi
+
+    if is_enabled "${LINK}"; then
+        link "${LINK_PARAMS[@]}"
     fi
 }
 
