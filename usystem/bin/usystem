@@ -956,6 +956,8 @@ function confirm() {
             return 1
             ;;
     esac
+
+    return 1
 }
 
 #===============================================================================
@@ -1206,8 +1208,8 @@ function link() {
 
     # Link nginx
     link_nginx "${LOG}"; EC=$?
-    if [[ "${EC}" != 0 ]] && is_enabled "${APPLY}"; then
-        if confirm "Restart nginx?" || is_enabled "${FORCE}"; then
+    if is_enabled "${FORCE}" || ( [[ "${EC}" != 0 ]] && is_enabled "${APPLY}" ); then
+        if is_enabled "${FORCE}"; confirm "Restart nginx?"; then
             servicectl nginx restart "${LOG}"
         fi
     fi
