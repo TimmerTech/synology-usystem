@@ -886,7 +886,7 @@ function link_nginx() {
                 echo "Linking: $(readlink -f "${FPATH}") => /etc/nginx/${DIR}/${FILE}" >> "${LOG}"
                 if ln -sf "$(readlink -f "${FPATH}")" "/etc/nginx/${DIR}/${FILE}" >> "${LOG}" 2>&1; then
                     echo "Verifying Syntax for: /etc/nginx/${DIR}/${FILE}" >> "${LOG}"
-                    RETVAL++
+                    (( RETVAL++ )) || true
                     if nginx -t >> "${LOG}" 2>&1; then
                         fresult OK
                     else
@@ -897,7 +897,7 @@ function link_nginx() {
                         echo "Removing link /etc/nginx/${DIR}/${FILE} because of syntax errors" >> "${LOG}"
                         rm -f "/etc/nginx/${DIR}/${FILE}"
                         fresult FAIL ERROR "Syntax Error; see log ${LOG}"
-                        RETVAL--
+                        (( RETVAL-- )) || true
                     fi
                 else
                     fresult FAIL ERROR "Failed to create link: see log ${LOG}"
