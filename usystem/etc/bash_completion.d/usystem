@@ -1,0 +1,177 @@
+#!/usr/bin/env bash
+#===============================================================================
+# usystem
+#===============================================================================
+function _usystem() {
+    local CUR PREV FIRSTWORD LASTWORD COMPLETE_WORDS COMPLETE_OPTIONS
+
+	# Don't break words at : and =, see [1] and [2]
+	COMP_WORDBREAKS=${COMP_WORDBREAKS//[:=]}
+
+	CUR=${COMP_WORDS[COMP_CWORD]}
+	PREV=${COMP_WORDS[COMP_CWORD-1]}
+	FIRSTWORD=$(_usystem_get_firstword)
+	LASTWORD=$(_usystem_get_lastword)
+
+    GLOBAL_COMMANDS="\
+        backup\
+        generate\
+        link\
+        help\
+        install\
+        prune\
+        reload\
+        repair\
+        upgrade\
+        version"
+
+    GLOBAL_OPTIONS="\
+        -h --help\
+        -v --version\
+        --log-level"
+
+    GLOBAL_LOGLEVELS="\
+        NONE\
+        STDOUT\
+        DEBUG\
+        INFO\
+        WARN\
+        ERROR"
+
+    INSTALL_OPTIONS="\
+        -f --force\
+        --force-config\
+        --force-profile\
+        --cli-name\
+        -b --bind-dir\
+        -v --volume\
+        -t --target-dir\
+        -r --root-dir\
+        --config-dir\
+        --log-dir\
+        --local\
+        -h --help help"
+
+    REPAIR_OPTIONS="\
+        --force-config\
+        --force-profile\
+        -h --help help"
+
+    LINK_OPTIONS="\
+        -y --apply\
+        -f --force\
+        -h --help help"
+
+    BACKUP_OPTIONS="\
+        -c --clean\
+        -f --force\
+        -r --backup-retain\
+        -h --help help"
+
+    PRUNE_OPTIONS="\
+        -a --all\
+        -b --backups\
+        -f --force\
+        -l --logs\
+        -r --backup-retain\
+        -h --help help"
+
+    UPGRADE_OPTIONS="\
+        --force-config\
+        --force-profile\
+        --local\
+        -h --help help"
+
+    GENERATE_OPTIONS="\
+        -p --real-path\
+        -r --reload\
+        -l --link\
+        -y --apply\
+        -f --force\
+        -h --help help"
+
+    RELOAD_OPTIONS="\
+        -h --help help"
+
+    case "${FIRSTWORD}" in
+        install)
+            COMPLETE_OPTIONS="${INSTALL_OPTIONS}"
+        ;;
+        repair)
+            COMPLETE_OPTIONS="${REPAIR_OPTIONS}"
+        ;;
+        link)
+            COMPLETE_OPTIONS="${LINK_OPTIONS}"
+        ;;
+        backup)
+            COMPLETE_OPTIONS="${BACKUP_OPTIONS}"
+        ;;
+        prune)
+            COMPLETE_OPTIONS="${PRUNE_OPTIONS}"
+        ;;
+        upgrade)
+            COMPLETE_OPTIONS="${UPGRADE_OPTIONS}"
+        ;;
+        generate)
+            COMPLETE_OPTIONS="${GENERATE_OPTIONS}"
+        ;;
+        reload)
+            COMPLETE_OPTIONS="${RELOAD_OPTIONS}"
+        ;;
+        *)
+            case "${PREV}" in
+                --log-level)
+                    COMPLETE_WORDS="$GLOBAL_LOGLEVELS"
+                    ;;
+
+                *)
+                    COMPLETE_WORDS="$GLOBAL_COMMANDS"
+                    COMPLETE_OPTIONS="$GLOBAL_OPTIONS"
+                    ;;
+            esac
+		;;
+    esac
+
+    # Either display words or options, depending on the user input
+	if [[ $CUR == -* ]]; then
+        # shellcheck disable=SC2207
+		COMPREPLY=( $( compgen -W "$COMPLETE_OPTIONS" -- "$CUR" ))
+	else
+        # shellcheck disable=SC2207
+		COMPREPLY=( $( compgen -W "$COMPLETE_WORDS" -- "$CUR" ))
+	fi
+
+	return 0
+}
+
+function _usystem_get_firstword() {
+    local FIRSTWORD i
+
+	FIRSTWORD=
+	for ((i = 1; i < ${#COMP_WORDS[@]}; ++i)); do
+		if [[ ${COMP_WORDS[i]} != -* ]]; then
+			FIRSTWORD=${COMP_WORDS[i]}
+			break
+		fi
+	done
+
+	echo "${FIRSTWORD}"
+}
+
+function _usystem_get_lastword() {
+    local LASTWORD i
+
+	LASTWORD=
+	for ((i = 1; i < ${#COMP_WORDS[@]}; ++i)); do
+		if [[ ${COMP_WORDS[i]} != -* ]] && [[ -n ${COMP_WORDS[i]} ]] && [[ ${COMP_WORDS[i]} != $CUR ]]; then
+			LASTWORD=${COMP_WORDS[i]}
+		fi
+	done
+
+	echo "${LASTWORD}"
+}
+
+#===============================================================================
+# bash completions
+#===============================================================================
+complete -F _usystem usystem
