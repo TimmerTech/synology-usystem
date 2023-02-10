@@ -96,27 +96,35 @@ function _usystem() {
     case "${FIRSTWORD}" in
         install)
             COMPLETE_OPTIONS="${INSTALL_OPTIONS}"
+            COMPLETE_WORDS="${INSTALL_OPTIONS}"
         ;;
         repair)
             COMPLETE_OPTIONS="${REPAIR_OPTIONS}"
+            COMPLETE_WORDS="${REPAIR_OPTIONS}"
         ;;
         link)
             COMPLETE_OPTIONS="${LINK_OPTIONS}"
+            COMPLETE_WORDS="${LINK_OPTIONS}"
         ;;
         backup)
             COMPLETE_OPTIONS="${BACKUP_OPTIONS}"
+            COMPLETE_WORDS="${BACKUP_OPTIONS}"
         ;;
         prune)
             COMPLETE_OPTIONS="${PRUNE_OPTIONS}"
+            COMPLETE_WORDS="${PRUNE_OPTIONS}"
         ;;
         upgrade)
             COMPLETE_OPTIONS="${UPGRADE_OPTIONS}"
+            COMPLETE_WORDS="${UPGRADE_OPTIONS}"
         ;;
         generate)
             COMPLETE_OPTIONS="${GENERATE_OPTIONS}"
+            COMPLETE_WORDS="${GENERATE_OPTIONS}"
         ;;
         reload)
             COMPLETE_OPTIONS="${RELOAD_OPTIONS}"
+            COMPLETE_WORDS="${RELOAD_OPTIONS}"
         ;;
         *)
             case "${PREV}" in
