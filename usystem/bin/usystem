@@ -140,6 +140,13 @@
 #% DESCRIPTION
 #%    Link user system resources to DSM
 #%
+#% OPTIONS
+#%    -y, --apply           Apply processed links, this will restart services
+#%                          if required. Omitting this will require the user to
+#%                          restart the services self.
+#%    -f. --force           Do not prompt for confirmation
+#%    -h, --help            Show this help
+#%
 #===============================================================================
 # LINK_END
 #===============================================================================
@@ -853,6 +860,15 @@ function link_nginx() {
     # Set umask
     umask 022
 
+    # Use 'LINK' to determine if we have to start nginx
+    # for every file we increase it first. If it fails we decrease it.
+    # Skipped, files do not affect this because they are either already linked
+    # or skipped anyways, so we do not have to restart nginx.
+    # This can result however that when there is only a single file linked
+    # that this function will return '1' which is an error in bash therefor
+    # we are checking in the link command for any exit code not '0'. For this
+    # will mean we have to restart nginx
+    LINK=0
     for DIR in conf.d sites-enabled; do
         for FPATH in "${USYS_CONFIG_DIR}/nginx/${DIR}"/*; do
             FILE="$(basename "${FPATH}")"
@@ -864,6 +880,7 @@ function link_nginx() {
                 echo "Linking: $(readlink -f "${FPATH}") => /etc/nginx/${DIR}/${FILE}" >> "${LOG}"
                 if ln -sf "$(readlink -f "${FPATH}")" "/etc/nginx/${DIR}/${FILE}" >> "${LOG}" 2>&1; then
                     echo "Verifying Syntax for: /etc/nginx/${DIR}/${FILE}" >> "${LOG}"
+                    LINK++
                     if nginx -t >> "${LOG}" 2>&1; then
                         fresult OK
                     else
@@ -874,6 +891,7 @@ function link_nginx() {
                         echo "Removing link /etc/nginx/${DIR}/${FILE} because of syntax errors" >> "${LOG}"
                         rm -f "/etc/nginx/${DIR}/${FILE}"
                         fresult FAIL ERROR "Syntax Error; see log ${LOG}"
+                        LINK--
                     fi
                 else
                     fresult FAIL ERROR "Failed to create link: see log ${LOG}"
@@ -885,7 +903,7 @@ function link_nginx() {
         done
     done
 
-    return 0
+    return ${LINK}
 }
 
 function prune_backups() {
@@ -924,6 +942,20 @@ function profile_reload() {
     fecho "Reloading environment ..."
     kill -USR1 $PPID
     fresult OK
+}
+
+function confirm() {
+    local -r Q="${1}"
+
+    read -r -p "${Q} [y/N] " RES
+    case "${RES}" in
+        [yY][eE][sS]|[yY])
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
 }
 
 #===============================================================================
@@ -1140,12 +1172,22 @@ function repair() {
 
 function link() {
     local -r LOG=$(log_file)
+    local APPLY=false
+    local FORCE=false
 
     # Parse options
     while [ ${#} -gt 0 ]; do
         case $1 in
             -h | --help | help)
                 scriptinfo 0 link
+            ;;
+            -y | --apply)
+                APPLY=true; readonly APPLY;
+                shift 1;
+            ;;
+            -f | --force)
+                FORCE=true; readonly FORCE;
+                shift 1
             ;;
             * )
                 printf "unknown option: '%s'\n" "${1}"
@@ -1163,8 +1205,12 @@ function link() {
     umask 022
 
     # Link nginx
-    link_nginx "${LOG}";
-    servicectl nginx restart "${LOG}"
+    link_nginx "${LOG}"; EC=$?
+    if [[ "${EC}" != 0 ]] && is_enabled "${APPLY}"; then
+        if confirm "Restart nginx?" || is_enabled "${FORCE}"; then
+            servicectl nginx restart "${LOG}"
+        fi
+    fi
 }
 
 function backup() {
