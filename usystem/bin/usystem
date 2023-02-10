@@ -319,7 +319,7 @@ declare -r  CLI_DIR="$( cd "$(dirname "$0")" && pwd )";
 # Please note that the log level NONE does not mean 'No Logging'
 # NONE is used for output without a log level
 declare -rA LOG_LEVELS=([NONE]=0 [STDOUT]=1 [DEBUG]=2 [INFO]=3 [WARN]=4 [ERROR]=5);
-declare -r  LOG_PFX='%40s '
+declare -r  LOG_PFX='%-40s '
 declare     LOG_LEVEL="${LOG_LEVEL:-INFO}";
 
 # User system variables
