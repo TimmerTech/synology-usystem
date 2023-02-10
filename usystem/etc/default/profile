@@ -105,10 +105,25 @@ done
 #===============================================================================
 # HISTORY
 #===============================================================================
-HISTSIZE=-1
-HISTFILESIZE=-1
+# History size
+HISTSIZE=10000;     # Buffer size
+HISTFILESIZE=10000; # History file size
+
+# Ignore commands from history
+#HISTIGNORE='sudo *':'echo w*'
+
+# Format History to include date time
+HISTTIMEFORMAT="%F %T "
+
+# Persist all command immediatly, multiple shells
+PROMPT_COMMAND='history -a'
+
+# Export History Settings
 export HISTSIZE
 export HISTFILESIZE
+export HISTTIMEFORMAT
+export HISTIGNORE
+export PROMPT_COMMAND
 
 
 #===============================================================================
