@@ -38,7 +38,7 @@ shopt -s extglob    # Extended Glob
 # USYS_TMP_DIR      : {USYS_TMP_DIR}
 #
 # Load {CLI_NAME}.conf
-# shellcheck source=./usystem.conf
+# shellcheck source=./usystem.conf disable=SC1094
 source "{USYS_CONFIG}"
 # Export {CLI_NAME}.conf
 export USYS_CONFIG
@@ -69,6 +69,7 @@ done
 # profile.d
 #===============================================================================
 # Load all scripts from profile.d
+# shellcheck disable=SC1083
 for PROFILE in {USYS_CONFIG_DIR}/profile.d/*; do
     case "${PROFILE}" in
         *.tmpl) false ;;
@@ -86,6 +87,7 @@ done
 # bash_completion.d
 #===============================================================================
 # Load all bash completion
+# shellcheck disable=SC1083
 for SCRIPT in {USYS_CONFIG_DIR}/bash_completion.d/*; do
     case "${SCRIPT}" in
         *.tmpl) false ;;
