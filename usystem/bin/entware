@@ -90,6 +90,7 @@ trap 'finish' EXIT
 declare     CLI_NAME="entware"
 # shellcheck disable=SC2034,SC2155
 declare -r  CLI_DIR="$( cd "$(dirname "$0")" && pwd )";
+declare -r  LOG_PFX='%-40s '
 declare -r  ENTWARE_ROOT="/volume1/@EntWare/opt"
 
 #===============================================================================
