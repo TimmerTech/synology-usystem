@@ -383,6 +383,9 @@ function link() {
         esac
     done
 
+    # Check if we are running as root
+    is_root "${FUNCNAME[0]}"
+
     # Link EntWare
     link_entware "Installing"
 
