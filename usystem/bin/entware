@@ -1,0 +1,432 @@
+#!/usr/bin/env bash
+# shellcheck shell=bash
+#===============================================================================
+# IMPLEMENTATION
+#===============================================================================
+#% ${CLI_NAME}: Ultimate repo for embedded devices
+#%    author:         G.J.R. Timmer (https://www.timmertech.io)
+#%    license:        MIT
+#%
+#% REPOSITORY
+#%    url:            https://github.com/Entware/Entware
+#%
+#===============================================================================
+# IMPLEMENTATION_END
+#===============================================================================
+# USAGE
+#===============================================================================
+#% SYNOPSIS
+#+    ${CLI_NAME} [OPTIONS] [COMMAND] [CMD_OPTIONS...]
+#%
+#% DESCRIPTION
+#%    EntWare: Ultimate repo for embedded devices
+#%    This script allows you to control your entware installation.
+#%
+#% COMMANDS
+#%    install           Install EntWare
+#%
+#% HELP
+#%    Providing -h, --help or help as parameter to a command will show the usage
+#%    information of a particular command.
+#%
+#% EXAMPLES
+#%    ${CLI_NAME} install
+#%
+#===============================================================================
+# USAGE_END
+#===============================================================================
+# INSTALL
+#===============================================================================
+#% SYNOPSIS
+#+    ${CLI_NAME} install [OPTIONS...]
+#%
+#% DESCRIPTION
+#%    This will install EntWare
+#%
+#% OPTIONS
+#%    -h, --help            Show this help
+#%
+#===============================================================================
+# INSTALL_END
+#===============================================================================
+# LINK
+#===============================================================================
+#% SYNOPSIS
+#+    ${CLI_NAME} link [OPTIONS...]
+#%
+#% DESCRIPTION
+#%    This will link EntWare within the Synology User System.
+#%    The linking of EntWare only needs to be done once.
+#%    After a DSM update/upgrade, will take care of EntWare. EntWare will
+#%    automatically be repaired and working after running 'usystem repair'.
+#%
+#% OPTIONS
+#%    -h, --help            Show this help
+#%
+#===============================================================================
+# LINK_END
+#===============================================================================
+
+
+#===============================================================================
+# SHELL CONFIG
+#===============================================================================
+set -T              # inherit DEBUG and RETURN trap for functions
+set -C              # prevent file overwrite by > &> <>
+set -E              # inherit -e
+set -e              # exit immediately on errors
+set -u              # exit on not assigned variables
+set -o pipefail     # exit on pipe failure
+shopt -s nullglob   # loop 0 times on null glob
+shopt -s globstar   # Find files recursivly
+
+# Define script finish function
+trap 'finish' EXIT
+
+
+#===============================================================================
+# GLOBAL variables
+#===============================================================================
+declare     CLI_NAME="entware"
+# shellcheck disable=SC2034,SC2155
+declare -r  CLI_DIR="$( cd "$(dirname "$0")" && pwd )";
+declare -r  ENTWARE_ROOT="/volume1/@EntWare/opt"
+
+#===============================================================================
+# FUNCTIONS
+#===============================================================================
+function scriptinfo_part() {
+    local -r PART="${1}"
+    local -r FILTER="${2}"
+
+    sed -n "/${PART}/,/${PART}_END/p" "${0}" | grep -e "${FILTER}" | sed -e "s/${FILTER}//g"
+}
+
+function scriptinfo_replace_var() {
+    local -r VARNAME="${1}"
+
+    sed -e "s|\${${VARNAME}}|${!VARNAME}|g"
+}
+
+# scriptinfo
+#
+# Parameters
+#   (1) EXIT Code
+#   (2) Command to display info for, defaults to 'help'
+#   (3) short/full; display short or full info, defaults to 'full'
+function scriptinfo() {
+    # Parameters
+    local -r EXIT="${1:-0}"
+    local -r CMD="${2:-help}"
+    local -r DISPLAY="${3:-full}"
+
+    # Filter
+    local FILTER="^#[%+]";
+
+    # Configure Display by altering FILTER
+    case "${DISPLAY,,}" in
+        short ) FILTER="^#+"    ;;
+        full  ) FILTER="^#[%+]" ;;
+    esac
+
+    case "${CMD,,}" in
+        help | usage)
+            scriptinfo_part USAGE "${FILTER}" | scriptinfo_replace_var CLI_NAME
+        ;;
+
+        *)
+            scriptinfo_part "${CMD^^}" "${FILTER}" | scriptinfo_replace_var CLI_NAME
+        ;;
+    esac
+
+    exit "${EXIT:-0}"
+}
+
+function is_root() {
+    local -r CMD="${1}"
+
+    if [[ $(/usr/bin/id -u) -ne 0 ]]; then
+        printf "'${CLI_NAME} %s' must be run as root\n" "${CMD}"
+        exit 1
+    fi
+}
+
+function fecho() {
+    local -r MSG="${1}"
+
+    # shellcheck disable=SC2059
+    printf "${LOG_PFX}" "${MSG}"
+}
+
+function fresult() {
+    local -r RES="${1}"
+
+    printf '[%s]\n' "${RES}"
+}
+
+function is_installed() {
+    fecho "Is EntWare Installed ..."
+    if [ -d "${ENTWARE_ROOT}" ]; then
+        fresult YES
+        echo
+        echo "ERROR: EntWare already installed"
+        echo
+        echo "Run 'entware link' to repair EntWare."
+        echo "This will have usystem take care of the entware installation."
+        echo
+        exit 1
+    else
+        fresult NO
+    fi
+
+    return 0
+}
+
+function is_supported_platform() {
+    fecho "Checking platform ($(uname -m)) ..."
+    if echo armv5 armv71 aarch64 mips mipsel x86 x86_64 | grep -F -q "$(uname -m)"; then
+        fresult OK
+    else
+        fresult FAIL
+        echo
+        echo "ERROR: Platform Unsupported"
+        exit 1
+    fi
+
+    return 0
+}
+
+function is_rootfs_sufficient() {
+    fecho "Checking root file system ..."
+    if [ "$(stat -c '%a' /opt)" -ge 600 ]; then
+        fresult OK
+    else
+        fresult FAIL
+        echo
+        echo "ERROR: Root file system; insufficient blocks for non-superuser"
+        exit 1
+    fi
+
+    return 0
+}
+
+function mount_entware() {
+    if ! grep " /opt " /proc/mounts > /dev/null 2>&1; then
+        # Mount EntWare
+        if [ ! -d /opt ]; then
+            mkdir -p /opt
+            chmod 775 /opt
+            chown root:root /opt
+        fi
+        echo "EntWare; mount: /opt"
+        mount -o bind /volume1/@EntWare/opt /opt
+    fi
+
+    if ! grep " /opt/tmp " /proc/mounts > /dev/null 2>&1; then
+        # Mount tmpfs to /opt/tmp, so that we do not clutter the OS
+        # and there is only a single tmpfs in use
+        if [ ! -d /opt/tmp ]; then
+            mkdir -p /opt/tmp
+        fi
+        echo "EntWare; mount: /opt/tmp"
+        mount -o bind /tmp /opt/tmp
+    fi
+}
+
+function link_entware() {
+    local MSG="${1:"Linking"}"
+
+    fecho "${MSG} rc.entware ..."
+    if cp /usys/etc/default/rc.entware /usys/etc/rc.d/rc.entware; then
+        fresult OK
+    else
+        fresult FAIL
+    fi
+}
+
+function start_entware() {
+    fecho "Starting entware ..."
+    if /usys/etc/rc.d/rc.entware start; then
+        fresult OK
+    else
+        fresult FAIL
+    fi
+}
+
+
+#===============================================================================
+# Commands
+#===============================================================================
+function install() {
+    # Parse options
+    while [ ${#} -gt 0 ]; do
+        case $1 in
+            -h | --help | help)
+                scriptinfo 0 install
+            ;;
+            * )
+                printf "unknown option: '%s'\n" "${1}"
+                scriptinfo 1 install
+            ;;
+        esac
+    done
+
+    # Check if we are running as root
+    is_root "${FUNCNAME[0]}"
+
+    # Check if already installed
+    is_installed
+
+    # Check if platform is supported
+    is_supported_platform
+
+    # Check if enough blocks are available for superuser on
+    # root file system
+    is_rootfs_sufficient
+
+    # Create EntWare Root Directory
+    fecho "Creating @EntWare ..."
+    if [ ! -d "${ENTWARE_ROOT}" ]; then
+        if mkdir -p "${ENTWARE_ROOT}"; then
+            fresult OK
+        else
+            fresult FAIL
+            echo
+            echo "Failed to create directory: ${ENTWARE_ROOT}"
+            exit 1
+        fi
+    else
+        fresult FAIL
+
+        # We should never be able to reach this code
+        echo
+        echo "ERROR: Directory: ${ENTWARE_ROOT} already exists"
+        exit 1
+    fi
+
+    # Remove /opt
+    fecho "Removing /opt"
+    if rm -rf /opt; then
+        fresult OK
+    else
+        fresult FAIL
+        echo
+        echo "ERROR: Failed to remove /opt"
+        exit 1
+    fi
+
+    # Create /opt
+    fecho "Create /opt ..."
+    if mkdir /opt; then
+        fresult OK
+    else
+        fresult FAIL
+        echo
+        echo "ERROR: Failed to create: /opt"
+        exit 1
+    fi
+
+    # Mount EntWare
+    mount_entware
+
+    # Install EntWare
+    echo
+    echo "Starting @EntWare Installer for Platform: $(uname -m)"
+    echo
+    case "$(uname -m)" in
+        armv5)
+            wget -qLO - https://bin.entware.net/armv5sf-k3.2/installer/generic.sh | /bin/sh
+        ;;
+        armv71)
+            wget -qLO - https://bin.entware.net/armv7sf-k3.2/installer/generic.sh | /bin/sh
+        ;;
+        aarch64)
+            wget -qLO - https://bin.entware.net/aarch64-k3.10/installer/generic.sh | /bin/sh
+        ;;
+        mips)
+            wget -qLO - https://bin.entware.net/mipssf-k3.4/installer/generic.sh | /bin/sh
+        ;;
+        mipsel)
+            wget -qLO - https://bin.entware.net/mipselsf-k3.4/installer/generic.sh | /bin/sh
+        ;;
+        x86)
+            wget -qLO - https://bin.entware.net/x86-k2.6/installer/generic.sh | /bin/sh
+        ;;
+        x86_64)
+            wget -qLO - https://bin.entware.net/x64-k3.2/installer/generic.sh | /bin/sh
+        ;;
+    esac
+
+    echo
+    echo "Install Completed"
+
+    # Link EntWare
+    link_entware "Installing"
+
+    # Start EntWare
+    start_entware
+
+}
+
+function link() {
+    # Parse options
+    while [ ${#} -gt 0 ]; do
+        case $1 in
+            -h | --help | help)
+                scriptinfo 0 install
+            ;;
+            * )
+                printf "unknown option: '%s'\n" "${1}"
+                scriptinfo 1 install
+            ;;
+        esac
+    done
+
+    # Link EntWare
+    link_entware "Installing"
+
+    # Start EntWare
+    start_entware
+}
+
+
+#===============================================================================
+# FINISH
+#
+# Script cleanup function
+# ':' Returns TRUE to ensure empty function is allowed to be defined
+#===============================================================================
+function finish() {
+    :
+}
+
+
+#===============================================================================
+# MAIN
+#===============================================================================
+function main() {
+    if (( ${#} == 0 )); then
+        scriptinfo 0 usage
+    fi
+
+    case ${1} in
+        -h | --help | help )
+            scriptinfo 0 usage
+        ;;
+
+        -v | --version | version )
+            scriptinfo 0 version
+        ;;
+
+        install | link )
+            $1 "${@:2}";
+        ;;
+
+        * )
+            echo "unknown command: $1"
+            scriptinfo 1 usage
+        ;;
+    esac
+}
+
+main "$@";

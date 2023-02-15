@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+#===============================================================================
+# WARNING: DO NOT EDIT
+#
+# IF YOU NEED ADDITONAL CHANGES BEYOND PLEASE SUBMIT A MERGE REQUEST.
+# THIS FILE MIGHT BE OVERRIDEN WHEN YOU UPDATE USYSTEM.
+#
+# URL: https://github.com/timmertech/synology-usystem
+#
+# If you need additional Run Commands; place your own run commands in
+# {USYS_BIND_DIR}/etc/rc.d and they will automatically be loaded.
+#
+#===============================================================================
+# SHELL CONFIG
+#===============================================================================
+set -T              # inherit DEBUG and RETURN trap for functions
+set -C              # prevent file overwrite by > &> <>
+set -E              # inherit -e
+set -u              # exit on not assigned variables
+set -o pipefail     # exit on pipe failure
+shopt -s nullglob   # loop 0 times on null glob
+#===============================================================================
+# USYSTEM RC Functions
+#===============================================================================
+function mount_entware() {
+    if ! grep " /opt " /proc/mounts > /dev/null 2>&1; then
+        # Mount EntWare
+        if [ ! -d /opt ]; then
+            mkdir -p /opt
+            chmod 775 /opt
+            chown root:root /opt
+        fi
+        echo "EntWare; mount: /opt"
+        mount -o bind /volume1/@EntWare/opt /opt
+    fi
+
+    if ! grep " /opt/tmp " /proc/mounts > /dev/null 2>&1; then
+        # Mount tmpfs to /opt/tmp, so that we do not clutter the OS
+        # and there is only a single tmpfs in use
+        if [ ! -d /opt/tmp ]; then
+            mkdir -p /opt/tmp
+        fi
+        echo "EntWare; mount: /opt/tmp"
+        mount -o bind /tmp /opt/tmp
+    fi
+}
+
+function link_profile() {
+    # Add usystem profile to environment
+    if grep -qF ". /opt/etc/profile" /etc/profile; then
+        echo "EntWare: Enabled"
+    else
+        echo "EntWare; Updating: /etc/profile"
+cat >> /etc/profile <<"EOF"
+
+# +++ENTWARE+++
+# Loading EntWare
+if [ -r /opt/etc/profile ] && bash -n /opt/etc/profile; then
+    . /opt/etc/profile
+fi
+# ---ENTWARE---
+EOF
+
+    fi
+}
+
+function update_entware() {
+    /opt/bin/opkg update
+}
+
+#===============================================================================
+# RC EntWare
+#===============================================================================
+case "$1" in
+    start)
+        echo "EntWare: starting"
+        if test -n "/volume1/@EntWare/opt"; then
+            # Mount EntWare
+            mount_entware
+
+            # Link profile
+            link_profile
+
+            # Start EntWare
+            /opt/etc/init.d/rc.unslung start
+
+            # Update EntWare
+            update_entware
+        fi
+    ;;
+    reconfig)
+        true
+    ;;
+    stop)
+        echo "Shutting down EntWare"
+        true
+    ;;
+    *)
+        echo "usage: $0 {start|stop|reconfig}"
+        exit 1
+    ;;
+esac
+
+exit 0
