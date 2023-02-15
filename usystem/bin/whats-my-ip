@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+# shellcheck shell=bash
+#===============================================================================
+# USAGE
+#===============================================================================
+#% SYNOPSIS
+#+    whatsmyip [OPTIONS]
+#%
+#% DESCRIPTION
+#%    Whats My IP
+#%    Obtain your public IP Address
+#%
+#% OPTIONS
+#%    -h, --help            Show this help
+#%
+#% EXAMPLES
+#%    whatsmyip
+#%    whatsmyip --no-newline
+#%
+#===============================================================================
+# USAGE_END
+#===============================================================================
+
+
+#===============================================================================
+# SHELL CONFIG
+#===============================================================================
+set -T              # inherit DEBUG and RETURN trap for functions
+set -C              # prevent file overwrite by > &> <>
+set -E              # inherit -e
+set -e              # exit immediately on errors
+set -u              # exit on not assigned variables
+set -o pipefail     # exit on pipe failure
+shopt -s nullglob   # loop 0 times on null glob
+shopt -s globstar   # Find files recursivly
+
+
+#===============================================================================
+# Global Variables
+#===============================================================================
+IP=127.0.0.1
+
+
+#===============================================================================
+# FUNCTIONS
+#===============================================================================
+function scriptinfo_part() {
+    local -r PART="${1}"
+    local -r FILTER="${2}"
+
+    sed -n "/${PART}/,/${PART}_END/p" "${0}" | grep -e "${FILTER}" | sed -e "s/${FILTER}//g"
+}
+
+function scriptinfo() {
+    local -r EXIT="${1:-0}"
+    local -r CMD="${2:-help}"
+    local -r DISPLAY="${3:-full}"
+
+    # Filter
+    local FILTER="^#[%+]";
+
+    # Configure Display by altering FILTER
+    case "${DISPLAY,,}" in
+        short ) FILTER="^#+"    ;;
+        full  ) FILTER="^#[%+]" ;;
+    esac
+
+    scriptinfo_part "${CMD^^}" "${FILTER}"
+
+    exit "${EXIT:-0}"
+}
+
+function get_pulic_ip() {
+    # IPv4 RegEX
+    ipv4_regex='([01]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5])\.([01]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5])\.([01]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5])\.([01]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5])'
+
+    IP=$(curl -s -4 https://cloudflare.com/cdn-cgi/trace | grep -E '^ip'); ret=$?
+    if [[ ! $ret == 0 ]]; then # In the case that cloudflare failed to return an ip.
+        # Attempt to get the ip from other websites.
+        IP=$(curl -s https://api.ipify.org || curl -s https://ipv4.icanhazip.com)
+    else
+        # Extract just the ip from the ip line from cloudflare.
+        IP=$(echo "${IP}" | sed -E "s/^ip=($ipv4_regex)$/\1/")
+    fi
+
+    # Use regex to check for proper IPv4 format.
+    if [[ ! $IP =~ ^$ipv4_regex$ ]]; then
+        exit 2
+    fi
+}
+
+
+#===============================================================================
+# MAIN
+#===============================================================================
+function main() {
+    local ARGS="${1:-""}"
+
+    case "${ARGS}" in
+        -h | --help | help )
+            scriptinfo 0 usage
+        ;;
+
+        -n | --no-newline)
+            get_pulic_ip
+            printf '%s' "${IP}"
+        ;;
+
+        *)
+            get_pulic_ip
+            printf '%s\n' "${IP}"
+        ;;
+    esac
+}
+
+main "$@";
