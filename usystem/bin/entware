@@ -235,7 +235,7 @@ function mount_entware() {
 }
 
 function link_entware() {
-    local MSG="${1:"Linking"}"
+    local MSG="${1:-"Linking"}"
 
     fecho "${MSG} rc.entware ..."
     if cp /usys/etc/default/rc.entware /usys/etc/rc.d/rc.entware; then
@@ -387,7 +387,7 @@ function link() {
     is_root "${FUNCNAME[0]}"
 
     # Link EntWare
-    link_entware "Installing"
+    link_entware "Linking"
 
     # Start EntWare
     start_entware
