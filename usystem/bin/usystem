@@ -879,6 +879,11 @@ function link_nginx() {
         for FPATH in "${USYS_CONFIG_DIR}/nginx/${DIR}"/*; do
             FILE="$(basename "${FPATH}")"
 
+            # Skip if FPATH is directory
+            if [ -d "${FPATH}" ]; then
+                continue
+            fi
+
             # Check if the target file is an actual file
             # if its a real file then we are not going to do anything
             fecho "nginx:${FILE} ..."
