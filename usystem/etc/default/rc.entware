@@ -45,25 +45,6 @@ function mount_entware() {
     fi
 }
 
-function link_profile() {
-    # Add usystem profile to environment
-    if grep -qF ". /opt/etc/profile" /etc/profile; then
-        echo "EntWare: Enabled"
-    else
-        echo "EntWare; Updating: /etc/profile"
-cat >> /etc/profile <<"EOF"
-
-# +++ENTWARE+++
-# Loading EntWare
-if [ -r /opt/etc/profile ] && bash -n /opt/etc/profile; then
-    . /opt/etc/profile
-fi
-# ---ENTWARE---
-EOF
-
-    fi
-}
-
 function update_entware() {
     /opt/bin/opkg update
 }
@@ -77,9 +58,6 @@ case "$1" in
         if test -n "/volume1/@EntWare/opt"; then
             # Mount EntWare
             mount_entware
-
-            # Link profile
-            link_profile
 
             # Start EntWare
             /opt/etc/init.d/rc.unslung start
